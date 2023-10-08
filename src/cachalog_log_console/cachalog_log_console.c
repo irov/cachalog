@@ -6,15 +6,17 @@
 static void __ch_log_observer( const char * _category, ch_log_level_t _level, const char * _file, uint32_t _line, const char * _message, void * _ud )
 {
     CH_UNUSED( _ud );
+    CH_UNUSED( _file );
+    CH_UNUSED( _line );
 
     const char * ls = ch_log_get_level_string( _level );
 
-    printf( "%s [%s:%u] %s: %s\n", ls, _file, _line, _category, _message );
+    printf( "%s [%s] %s\n", ls, _category, _message );
 }
 //////////////////////////////////////////////////////////////////////////
 ch_result_t ch_log_console_initialize()
 {
-    if( ch_log_add_observer( CH_NULLPTR, CH_LOG_ALL, &__ch_log_observer, CH_NULLPTR ) == CH_FAILURE )
+    if( ch_log_add_observer( CH_NULLPTR, CH_LOG_VERBOSE, &__ch_log_observer, CH_NULLPTR ) == CH_FAILURE )
     {
         return CH_FAILURE;
     }

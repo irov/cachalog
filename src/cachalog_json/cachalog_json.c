@@ -417,6 +417,38 @@ ch_result_t ch_json_to_uint64( const ch_json_handle_t * _handle, uint64_t * cons
     return CH_FAILURE;
 }
 //////////////////////////////////////////////////////////////////////////
+ch_result_t ch_json_to_size_t( const ch_json_handle_t * _handle, ch_size_t * const _value )
+{
+    yyjson_val * val = (yyjson_val *)_handle;
+
+    if( yyjson_is_sint( val ) == true )
+    {
+        int64_t value = unsafe_yyjson_get_sint( val );
+
+        *_value = (ch_size_t)value;
+
+        return CH_SUCCESSFUL;
+    }
+    else if( yyjson_is_uint( val ) == true )
+    {
+        uint64_t value = unsafe_yyjson_get_uint( val );
+
+        *_value = (ch_size_t)value;
+
+        return CH_SUCCESSFUL;
+    }
+    else if( yyjson_is_real( val ) == true )
+    {
+        double value = unsafe_yyjson_get_real( val );
+
+        *_value = (ch_size_t)value;
+
+        return CH_SUCCESSFUL;
+    }
+
+    return CH_FAILURE;
+}
+//////////////////////////////////////////////////////////////////////////
 ch_result_t ch_json_to_real( const ch_json_handle_t * _handle, double * const _value )
 {
     yyjson_val * val = (yyjson_val *)_handle;
@@ -662,6 +694,24 @@ ch_result_t ch_json_get_field_uint64( const ch_json_handle_t * _handle, const ch
     }
 
     if( ch_json_to_uint64( field, _value ) == CH_FAILURE )
+    {
+        return CH_FAILURE;
+    }
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
+ch_result_t ch_json_get_field_size_t( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _value, ch_size_t _default )
+{
+    ch_json_handle_t * field;
+    if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
+    {
+        *_value = _default;
+
+        return CH_SUCCESSFUL;
+    }
+
+    if( ch_json_to_size_t( field, _value ) == CH_FAILURE )
     {
         return CH_FAILURE;
     }

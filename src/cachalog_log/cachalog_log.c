@@ -61,7 +61,7 @@ void ch_log_finalize()
 //////////////////////////////////////////////////////////////////////////
 const char * ch_log_get_level_string( ch_log_level_t _level )
 {
-    static const char * ch_log_level_string[] = {"all", "info", "warning", "error", "critical"};
+    static const char * ch_log_level_string[] = {"V", "I", "W", "E", "C"};
 
     const char * str = ch_log_level_string[_level];
 
@@ -147,7 +147,7 @@ void ch_log_message( const char * _category, ch_log_level_t _level, const char *
     va_start( args, _format );
 
     char message[CH_LOG_MAX_MESSAGE_SIZE];
-    int32_t n = vsprintf( message, _format, args );
+    int32_t n = vsnprintf( message, CH_LOG_MAX_MESSAGE_SIZE, _format, args );
 
     va_end( args );
 

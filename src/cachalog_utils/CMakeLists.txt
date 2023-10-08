@@ -8,6 +8,8 @@ ENDIF()
 
 ADD_FILTER(
 src
+    cachalog_ring.h
+    
     cachalog_getopt.h
     cachalog_getopt.c
     
@@ -22,6 +24,9 @@ src
     
     cachalog_time.h
     ${cachalog_time_platform}
+    
+    cachalog_rand.h
+    cachalog_rand.c
 )
 
 ADD_LIBRARY(${PROJECT_NAME} STATIC ${CACHALOG_SOURCE_FILES})

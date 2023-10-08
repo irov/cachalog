@@ -5,7 +5,7 @@
 
 typedef enum ch_log_level_e
 {
-    CH_LOG_ALL,
+    CH_LOG_VERBOSE,
     CH_LOG_INFO,
     CH_LOG_WARNING,
     CH_LOG_ERROR,

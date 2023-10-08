@@ -9,21 +9,36 @@
 
 typedef struct ch_service_t
 {    
-    uint32_t capacity;
+    ch_time_t created_timestamp;
 
-    ch_mutex_handle_t * mutex_messages;
+    uint32_t capacity;
+    ch_time_t timemax;
+
+    ch_mutex_handle_t * messages_mutex;
+    ch_size_t messages_count;
+    ch_size_t messages_max;
     ch_message_t * messages;
 
-    ch_mutex_handle_t * mutex_records;
+    ch_mutex_handle_t * records_mutex;
+    uint64_t records_enumerator;
+    uint64_t records_seed;
+    ch_size_t records_count;
+    ch_size_t records_max;
     ch_record_t * records;
 
-    ch_mutex_handle_t * mutex_attributes;
+    ch_mutex_handle_t * attributes_mutex;
+    ch_size_t attributes_count;
+    ch_size_t attributes_max;
     ch_attribute_t * attributes;
 } ch_service_t;
 
-ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity );
-ch_result_t ch_service_get_record( ch_service_t * _service, ch_record_t ** _record );
-ch_result_t ch_service_get_message( ch_service_t * _service, ch_message_t ** _message );
-ch_result_t ch_service_get_attribute( ch_service_t * _service, ch_attribute_t ** _attribute );
+ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, ch_time_t _timemax );
+ch_result_t ch_service_get_record( ch_service_t * _service, ch_time_t _timestamp, ch_record_t ** _record );
+ch_result_t ch_service_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_message_t ** _message );
+ch_result_t ch_service_get_attribute( ch_service_t * _service, ch_time_t _timestamp, ch_attribute_t ** _attribute );
+
+typedef void(*ch_service_records_visitor_t)(uint64_t _index, const ch_record_t * _record, void * _ud);
+
+ch_result_t ch_service_select_records( ch_service_t * _service, ch_time_t _timestamp, ch_time_t _timeoffset, ch_time_t _timelimit, ch_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud );
 
 #endif

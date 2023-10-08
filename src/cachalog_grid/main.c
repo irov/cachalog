@@ -14,6 +14,7 @@
 #include "cachalog_utils/cachalog_clock.h"
 #include "cachalog_utils/cachalog_date.h"
 #include "cachalog_utils/cachalog_file.h"
+#include "cachalog_utils/cachalog_time.h"
 
 #include "cachalog_service.h"
 
@@ -22,7 +23,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 #ifndef CH_GRID_REQUEST_DATA_MAX_SIZE
-#define CH_GRID_REQUEST_DATA_MAX_SIZE 2048
+#define CH_GRID_REQUEST_DATA_MAX_SIZE 102400
 #endif
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_config_t
@@ -34,7 +35,8 @@ typedef struct ch_grid_config_t
     uint16_t grid_port;
 
     uint32_t max_thread;
-    uint32_t max_message;
+    uint32_t max_record;
+    uint64_t max_time;
 
     char log_file[CH_MAX_PATH];
 } ch_grid_config_t;
@@ -58,11 +60,13 @@ typedef struct ch_grid_cmd_inittab_t
     ch_request_func_t request;
 } ch_grid_cmd_inittab_t;
 //////////////////////////////////////////////////////////////////////////
-extern ch_http_code_t ch_grid_request_log( const ch_json_handle_t * _json, ch_service_t * _service, char * _response, ch_size_t * _size );
+extern ch_http_code_t ch_grid_request_insert( const ch_json_handle_t * _json, ch_service_t * _service, char * _response, ch_size_t * _size );
+extern ch_http_code_t ch_grid_request_select( const ch_json_handle_t * _json, ch_service_t * _service, char * _response, ch_size_t * _size );
 //////////////////////////////////////////////////////////////////////////
 static ch_grid_cmd_inittab_t grid_cmds[] =
 {
-    {"log", &ch_grid_request_log},
+    {"insert", &ch_grid_request_insert},
+    {"select", &ch_grid_request_select},
 };
 //////////////////////////////////////////////////////////////////////////
 static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
@@ -108,7 +112,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     ch_http_code_t response_code = CH_HTTP_OK;
 
     ch_size_t response_data_size = 2;
-    char response_data[CH_GRID_REQUEST_DATA_MAX_SIZE];
+    char response_data[CH_GRID_REQUEST_DATA_MAX_SIZE] = {'\0'};
     strcpy( response_data, "{}" );
 
     char token[32 + 1] = {'\0'};
@@ -171,6 +175,8 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     }
 
     evbuffer_add( output_buffer, response_data, response_data_size );
+
+    CH_LOG_MESSAGE_INFO( "grid", "response: [%.*s]", response_data_size, response_data );
 
     struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
 
@@ -277,7 +283,8 @@ int main( int _argc, char * _argv[] )
     ch_grid_config_t * config = CH_NEW( ch_grid_config_t );
 
     config->max_thread = 16;
-    config->max_message = 10000;
+    config->max_record = 10000;
+    config->max_time = CH_TIME_SECONDS_IN_WEEK;
     
     strcpy( config->grid_uri, "127.0.0.1" );
     config->grid_port = 5555;
@@ -328,7 +335,8 @@ int main( int _argc, char * _argv[] )
         ch_json_copy_field_string( json_handle, "token", config->token, sizeof( config->token ), CH_NULLPTR, CH_NULLPTR );
 
         ch_json_get_field_uint32( json_handle, "max_thread", &config->max_thread, config->max_thread );
-        ch_json_get_field_uint32( json_handle, "max_message", &config->max_message, config->max_message );
+        ch_json_get_field_uint32( json_handle, "max_record", &config->max_record, config->max_record );
+        ch_json_get_field_uint64( json_handle, "max_time", &config->max_time, config->max_time );
 
         ch_json_copy_field_string( json_handle, "name", config->name, sizeof( config->name ), CH_NULLPTR, CH_NULLPTR );
         ch_json_copy_field_string( json_handle, "log_file", config->log_file, sizeof( config->log_file ), CH_NULLPTR, CH_NULLPTR );
@@ -348,14 +356,15 @@ int main( int _argc, char * _argv[] )
     CH_LOG_MESSAGE_INFO( "grid", "start grid with config:" );
     CH_LOG_MESSAGE_INFO( "grid", "------------------------------------" );
     CH_LOG_MESSAGE_INFO( "grid", "max_thread: %u", config->max_thread );
-    CH_LOG_MESSAGE_INFO( "grid", "max_message: %u", config->max_message );
+    CH_LOG_MESSAGE_INFO( "grid", "max_record: %u", config->max_record );
+    CH_LOG_MESSAGE_INFO( "grid", "max_time: %llu", config->max_time );
     CH_LOG_MESSAGE_INFO( "grid", "grid_uri: %s", config->grid_uri );
     CH_LOG_MESSAGE_INFO( "grid", "grid_port: %u", config->grid_port );
     CH_LOG_MESSAGE_INFO( "grid", "name: %s", config->name );
     CH_LOG_MESSAGE_INFO( "grid", "------------------------------------" );
 
     ch_service_t * service;
-    if( ch_service_create( &service, config->max_message ) == CH_FAILURE )
+    if( ch_service_create( &service, config->max_record, config->max_time ) == CH_FAILURE )
     {
         return EXIT_FAILURE;
     }
@@ -382,8 +391,6 @@ int main( int _argc, char * _argv[] )
 
         process_handle->thread = CH_NULLPTR;
 
-        CH_LOG_MESSAGE_INFO( "grid", "[thread] try... (%u)", i );
-
         ch_thread_handle_t * thread;
         if( ch_thread_create( &__ch_ev_thread_base, process_handle, &thread ) == CH_FAILURE )
         {
@@ -395,8 +402,6 @@ int main( int _argc, char * _argv[] )
         }
 
         process_handle->thread = thread;
-
-        CH_LOG_MESSAGE_INFO( "grid", "[thread] created (%u)", i );
     }
 
     CH_LOG_MESSAGE_INFO( "grid", "ready.." );

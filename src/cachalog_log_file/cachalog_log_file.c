@@ -52,7 +52,7 @@ ch_result_t ch_log_file_initialize( const char * _file )
     ch_log_file_handle_t * handle = CH_NEW( ch_log_file_handle_t );
     handle->f = f;
 
-    if( ch_log_add_observer( CH_NULLPTR, CH_LOG_ALL, &__ch_log_file_observer, handle ) == CH_FAILURE )
+    if( ch_log_add_observer( CH_NULLPTR, CH_LOG_VERBOSE, &__ch_log_file_observer, handle ) == CH_FAILURE )
     {
         return CH_FAILURE;
     }

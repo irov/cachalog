@@ -10,7 +10,8 @@ src
     cachalog_service.h
     cachalog_service.c
     
-    cachalog_grid_request_log.c
+    cachalog_grid_request_insert.c
+    cachalog_grid_request_select.c
 )
 
 INCLUDE_DIRECTORIES(${CACHALOG_CONFIGURATION_DIRECTORY}/libevent/include)
