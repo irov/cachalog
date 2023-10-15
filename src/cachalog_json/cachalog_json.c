@@ -569,7 +569,8 @@ ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _
 
     if( field == CH_NULLPTR )
     {
-        *_result = CH_FALSE;
+        *_length = 0;
+        *_required = CH_FALSE;
 
         return CH_SUCCESSFUL;
     }
