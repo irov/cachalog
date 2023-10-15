@@ -20,6 +20,8 @@ typedef struct ch_record_t
     char service[16];
     char user_id[64];
     const ch_message_t * message;
+    const ch_message_t * file;
+    uint32_t line;
     char category[16];
     uint32_t level;
     uint64_t timestamp;

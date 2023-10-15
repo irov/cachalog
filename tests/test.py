@@ -3,19 +3,24 @@ import cachalog
 import sys
 import unittest
 import json
+import time
+import string
+
+import random
 
 class Testing(unittest.TestCase):
     def test_00_log(self):
         token = "cb57466281a8f398aa63416b8b499978"
     
         for i in range(50):
+            rnd = random.randrange(0, 1696072383)
             data_insert = {}
             data_insert["service"] = "test"
-            data_insert["user.id"] = "user{0}".format(i)
-            data_insert["message"] = "Test log message {0}!".format(i)
+            data_insert["user.id"] = "user{0}".format(rnd)
+            data_insert["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 4096)))
             data_insert["category"] = "common"
             data_insert["level"] = 3
-            data_insert["timestamp"] = 1696072383
+            data_insert["timestamp"] = int(time.time()) 
             data_insert["live"] = 2383
             data_insert["build.environment"] = "dev"
             data_insert["build.release"] = True

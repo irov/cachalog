@@ -55,6 +55,32 @@ ch_http_code_t ch_grid_request_insert( const ch_json_handle_t * _json, ch_servic
     ch_json_copy_field_string_required( _json, "service", record->service, sizeof( record->service ), CH_NULLPTR, &required );
     ch_json_copy_field_string_required( _json, "user.id", record->user_id, sizeof( record->user_id ), CH_NULLPTR, &required );
     ch_json_copy_field_string_required( _json, "category", record->category, sizeof( record->category ), CH_NULLPTR, &required );
+
+    ch_size_t file_length;
+    if( ch_json_get_field_string_length( _json, "file", &file_length ) == CH_SUCCESSFUL )
+    {
+        ch_message_t * file;
+        if( ch_service_get_message( _service, timestamp, file_length, &file ) == CH_FAILURE )
+        {
+            return CH_HTTP_INTERNAL;
+        }
+
+        ch_json_copy_field_string_required( _json, "file", file->text, file->capacity, CH_NULLPTR, &required );
+
+        record->file = file;
+    }
+    else
+    {
+        ch_message_t * file;
+        if( ch_service_get_message_empty( _service, timestamp, &file ) == CH_FAILURE )
+        {
+            return CH_HTTP_INTERNAL;
+        }
+
+        record->file = file;
+    }
+
+    ch_json_get_field_uint32_required( _json, "line", &record->line, &required );
     ch_json_get_field_uint32_required( _json, "level", &record->level, &required );
     ch_json_get_field_uint64_required( _json, "timestamp", &record->timestamp, &required );
     ch_json_get_field_uint64_required( _json, "live", &record->live, &required );
@@ -66,17 +92,23 @@ ch_http_code_t ch_grid_request_insert( const ch_json_handle_t * _json, ch_servic
     ch_json_copy_field_string_required( _json, "os.family", record->os_family, sizeof( record->os_family ), CH_NULLPTR, &required );
     ch_json_copy_field_string_required( _json, "os.version", record->os_version, sizeof( record->os_version ), CH_NULLPTR, &required );
 
-    ch_message_t * message;
-    if( ch_service_get_message( _service, timestamp, &message ) == CH_FAILURE )
+    ch_size_t message_length;
+    if( ch_json_get_field_string_length( _json, "message", &message_length ) == CH_SUCCESSFUL )
     {
-        return CH_HTTP_INTERNAL;
+        ch_message_t * message;
+        if( ch_service_get_message( _service, timestamp, message_length, &message ) == CH_FAILURE )
+        {
+            return CH_HTTP_INTERNAL;
+        }
+
+        ch_json_copy_field_string_required( _json, "message", message->text, message->capacity, CH_NULLPTR, &required );
+
+        record->message = message;
     }
-
-    message->record = record;
-
-    ch_json_copy_field_string_required( _json, "message", message->text, sizeof( message->text ), CH_NULLPTR, &required );
-
-    record->message = message;
+    else
+    {
+        return CH_HTTP_BADREQUEST;
+    }    
 
     json_attributes_foreach_ud_t ud;
     ud.service = _service;
@@ -89,12 +121,6 @@ ch_http_code_t ch_grid_request_insert( const ch_json_handle_t * _json, ch_servic
     {
         return CH_HTTP_INTERNAL;
     }
-
-    CH_LOG_MESSAGE_INFO( "log", "record id: %llu timestamp: %llu message: %s"
-        , record->id
-        , record->created_timestamp
-        , message->text
-    );
 
     return CH_HTTP_OK;
 }

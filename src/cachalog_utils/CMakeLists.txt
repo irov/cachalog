@@ -27,6 +27,9 @@ src
     
     cachalog_rand.h
     cachalog_rand.c
+    
+    cachalog_math.h
+    cachalog_math.c
 )
 
 ADD_LIBRARY(${PROJECT_NAME} STATIC ${CACHALOG_SOURCE_FILES})

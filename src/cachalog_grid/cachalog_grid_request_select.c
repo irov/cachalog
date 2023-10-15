@@ -20,11 +20,13 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 {
     records_visitor_select_t * ud = (records_visitor_select_t *)_ud;
 
-    int response_offset = sprintf( ud->response + *ud->size, "%s{\"service\":\"%s\",\"user.id\":\"%s\",\"message\":\"%s\",\"category\":\"%s\",\"level\":%u,\"timestamp\":%llu,\"live\":%llu,\"build.environment\":\"%s\",\"build.release\":%s,\"build.version\":\"%s\",\"build.number\":%llu,\"device.model\":\"%s\",\"os.family\":\"%s\",\"os.version\":\"%s\",\"attributes\":{"
+    int response_offset = sprintf( ud->response + *ud->size, "%s{\"service\":\"%s\",\"user.id\":\"%s\",\"message\":\"%s\",\"file\":\"%s\",\"line\":%u,\"category\":\"%s\",\"level\":%u,\"timestamp\":%llu,\"live\":%llu,\"build.environment\":\"%s\",\"build.release\":%s,\"build.version\":\"%s\",\"build.number\":%llu,\"device.model\":\"%s\",\"os.family\":\"%s\",\"os.version\":\"%s\",\"attributes\":{"
         , _index == 0 ? "" : ","
         , _record->service
         , _record->user_id
         , _record->message->text
+        , _record->file->text
+        , _record->line
         , _record->category
         , _record->level
         , _record->timestamp
@@ -66,7 +68,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     response_offset += sprintf( ud->response + *ud->size + response_offset, "}}" );
 
-    *ud->size += response_offset;    
+    *ud->size += response_offset;
 }
 //////////////////////////////////////////////////////////////////////////
 ch_http_code_t ch_grid_request_select( const ch_json_handle_t * _json, ch_service_t * _service, char * _response, ch_size_t * _size )

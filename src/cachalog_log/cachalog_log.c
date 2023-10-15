@@ -12,7 +12,7 @@
 #endif
 
 #ifndef CH_LOG_MAX_MESSAGE_SIZE
-#define CH_LOG_MAX_MESSAGE_SIZE 2048
+#define CH_LOG_MAX_MESSAGE_SIZE 8192
 #endif
 
 //////////////////////////////////////////////////////////////////////////

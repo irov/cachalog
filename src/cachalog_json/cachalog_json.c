@@ -481,6 +481,29 @@ ch_result_t ch_json_to_real( const ch_json_handle_t * _handle, double * const _v
     return CH_FAILURE;
 }
 //////////////////////////////////////////////////////////////////////////
+ch_result_t ch_json_get_field_string_length( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _length )
+{
+    yyjson_val * val = (yyjson_val *)_handle;
+
+    yyjson_val * field = yyjson_obj_get( val, _key );
+
+    if( field == CH_NULLPTR )
+    {        
+        return CH_FAILURE;
+    }
+
+    if( yyjson_is_str( field ) == false )
+    {
+        return CH_FAILURE;
+    }
+
+    size_t length = unsafe_yyjson_get_len( field );
+
+    *_length = length;
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
 ch_result_t ch_json_get_field_string( const ch_json_handle_t * _handle, const char * _key, const char ** _value, ch_size_t * _length, const char * _default )
 {
     ch_json_handle_t * field;
@@ -538,7 +561,7 @@ ch_result_t ch_json_copy_field_string( const ch_json_handle_t * _handle, const c
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _length, ch_bool_t * const _result )
+ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _length, ch_bool_t * const _required )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -563,7 +586,7 @@ ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle, const char * _key, char * _value, ch_size_t _capacity, ch_size_t * _length, ch_bool_t * _result )
+ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle, const char * _key, char * _value, ch_size_t _capacity, ch_size_t * _length, ch_bool_t * _required )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -571,7 +594,7 @@ ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle
 
     if( field == CH_NULLPTR )
     {
-        *_result = CH_FALSE;
+        *_required = CH_FALSE;
 
         return CH_SUCCESSFUL;
     }

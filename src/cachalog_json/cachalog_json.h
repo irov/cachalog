@@ -42,6 +42,7 @@ ch_result_t ch_json_to_uint64( const ch_json_handle_t * _handle, uint64_t * cons
 ch_result_t ch_json_to_size_t( const ch_json_handle_t * _handle, ch_size_t * const _value );
 ch_result_t ch_json_to_real( const ch_json_handle_t * _handle, double * const _value );
 
+ch_result_t ch_json_get_field_string_length( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _length );
 ch_result_t ch_json_get_field_string( const ch_json_handle_t * _handle, const char * _key, const char ** _value, ch_size_t * _length, const char * _default );
 ch_result_t ch_json_copy_field_string( const ch_json_handle_t * _handle, const char * _key, char * _value, ch_size_t _capacity, ch_size_t * _length, const char * _default );
 ch_result_t ch_json_get_field_int16( const ch_json_handle_t * _handle, const char * _key, int16_t * _value, int16_t _default );

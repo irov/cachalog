@@ -29,6 +29,10 @@ void ch_memory_free( const void * _ptr );
 #define CH_NEW(TYPE) ((TYPE*)ch_memory_alloc(sizeof(TYPE)))
 #endif
 
+#ifndef CH_NEWE
+#define CH_NEWE(TYPE, E) ((TYPE*)ch_memory_alloc(sizeof(TYPE) + E))
+#endif
+
 #ifndef CH_NEWN
 #define CH_NEWN(TYPE, N) ((TYPE*)ch_memory_alloc(sizeof(TYPE) * N))
 #endif

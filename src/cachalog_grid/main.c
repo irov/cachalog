@@ -176,7 +176,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     evbuffer_add( output_buffer, response_data, response_data_size );
 
-    CH_LOG_MESSAGE_INFO( "grid", "response: [%.*s]", response_data_size, response_data );
+    CH_LOG_MESSAGE_INFO( "grid", "response: %.*s", response_data_size, response_data );
 
     struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
 

@@ -70,10 +70,9 @@ typedef struct ch_sha1_t
 } ch_sha1_t;
 
 #ifndef CH_DATA_MAX_SIZE
-#define CH_DATA_MAX_SIZE 10240
+#define CH_DATA_MAX_SIZE 102400
 #endif
 
-typedef char ch_source_t[CH_DATA_MAX_SIZE];
 typedef ch_byte_t ch_data_t[CH_DATA_MAX_SIZE];
 
 #ifndef CH_UNUSED

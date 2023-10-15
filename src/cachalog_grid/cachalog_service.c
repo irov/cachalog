@@ -3,6 +3,7 @@
 #include "cachalog_memory/cachalog_memory.h"
 #include "cachalog_utils/cachalog_time.h"
 #include "cachalog_utils/cachalog_rand.h"
+#include "cachalog_utils/cachalog_math.h"
 
 #include <string.h>
 
@@ -15,11 +16,22 @@ static ch_result_t __ch_service_create_messages( ch_service_t * _service )
         return CH_FAILURE;
     }
 
-    _service->messages_mutex = mutex;
-    _service->messages_count = 0;
+    _service->messages_mutex = mutex;    
     _service->messages_max = _service->capacity;
 
-    _service->messages = CH_NULLPTR;
+    for( uint32_t index = 0; index != 7; ++index )
+    {
+        _service->messages_count[index] = 0;
+        _service->messages[index] = CH_NULLPTR;
+    }
+
+    ch_message_t * message_empty = CH_NEWE( ch_message_t, 1 );
+    CH_RING_INIT( message_empty );
+    message_empty->created_timestamp = _service->created_timestamp;
+    message_empty->capacity = 0;
+    message_empty->text[0] = '\0';
+
+    _service->message_empty = message_empty;
 
     return CH_SUCCESSFUL;
 }
@@ -106,6 +118,8 @@ static void __ch_service_init_record( ch_record_t * _record, ch_time_t _timestam
     _record->service[0] = '\0';
     _record->user_id[0] = '\0';
     _record->message = CH_NULLPTR;
+    _record->file = CH_NULLPTR;
+    _record->line = 0;
     _record->category[0] = '\0';
     _record->level = 0;
     _record->timestamp = 0;
@@ -150,27 +164,15 @@ static ch_result_t __ch_service_unmutex_get_record( ch_service_t * _service, ch_
     {
         while( _timestamp - _service->records->prev->prev->created_timestamp >= _service->timemax )
         {
-            --_service->records_count;
-
-            if( _service->records_count == 0 )
+            if( _service->records_count == 1 )
             {
-                _service->records_count = 1;
-
-                break;
-            }
-            else if( _service->records_count == 1 )
-            {
-                ch_record_t * old_record = _service->records->prev;
-
-                CH_RING_REMOVE( old_record );
-
-                CH_FREE( old_record );
-
                 break;
             }
             else
             {
-                ch_record_t * old_record = _service->records->prev->prev;
+                --_service->records_count;
+
+                ch_record_t * old_record = _service->records->prev;
 
                 CH_RING_REMOVE( old_record );
 
@@ -178,8 +180,8 @@ static ch_result_t __ch_service_unmutex_get_record( ch_service_t * _service, ch_
             }
         }
 
-        ch_record_t * record = _service->records;
-        _service->records = record->prev;
+        ch_record_t * record = _service->records->prev;
+        _service->records = record;
 
         *_record = record;
 
@@ -188,8 +190,8 @@ static ch_result_t __ch_service_unmutex_get_record( ch_service_t * _service, ch_
 
     if( _service->records_count >= _service->records_max )
     {
-        ch_record_t * record = _service->records;
-        _service->records = record->prev;
+        ch_record_t * record = _service->records->prev;
+        _service->records = record;
 
         *_record = record;
 
@@ -203,7 +205,8 @@ static ch_result_t __ch_service_unmutex_get_record( ch_service_t * _service, ch_
         return CH_FAILURE;
     }
 
-    CH_RING_PUSH_FRONT( _service->records, record );
+    CH_RING_PUSH_BACK( _service->records, record );
+    _service->records = record;
 
     ++_service->records_count;
 
@@ -237,53 +240,51 @@ static void __ch_service_init_message( ch_message_t * _message, ch_time_t _times
     _message->text[0] = '\0';
 }
 //////////////////////////////////////////////////////////////////////////
-static ch_result_t __ch_service_unmutex_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_message_t ** _message )
+static ch_result_t __ch_service_unmutex_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_size_t _size, ch_message_t ** _message )
 {
-    if( _service->messages == CH_NULLPTR )
+    ch_size_t clamp_size = ch_clampz( CH_MESSAGE_TEXT_MIN, CH_MESSAGE_TEXT_MAX, _size );
+
+    uint32_t nearest_pow2_size = ch_nearest_pow2( clamp_size );
+    uint32_t l2_size = ch_log2( nearest_pow2_size );
+    uint32_t capacity = ch_pow2( l2_size );
+
+    uint32_t index = l2_size - ch_log2( CH_MESSAGE_TEXT_MIN );
+
+    if( _service->messages[index] == CH_NULLPTR )
     {
-        ch_message_t * message = CH_NEW( ch_message_t );
+        ch_message_t * message = CH_NEWE( ch_message_t, capacity );
 
         if( message == CH_NULLPTR )
         {
             return CH_FAILURE;
         }
 
+        message->capacity = capacity;
+
         CH_RING_INIT( message );
 
-        _service->messages = message;
+        _service->messages[index] = message;
         
-        ++_service->messages_count;
+        ++_service->messages_count[index];
 
         *_message = message;
 
         return CH_SUCCESSFUL;
     }
 
-    if( _timestamp - _service->messages->prev->created_timestamp >= _service->timemax )
+    if( _timestamp - _service->messages[index]->prev->created_timestamp >= _service->timemax )
     {
-        while( _timestamp - _service->messages->prev->prev->created_timestamp >= _service->timemax )
+        while( _timestamp - _service->messages[index]->prev->prev->created_timestamp >= _service->timemax )
         {
-            --_service->messages_count;
-
-            if( _service->messages_count == 0 )
+            if( _service->messages_count[index] == 1 )
             {
-                _service->messages_count = 1;
-
-                break;
-            }
-            else if( _service->messages_count == 1 )
-            {
-                ch_message_t * old_message = _service->messages->prev;
-
-                CH_RING_REMOVE( old_message );
-
-                CH_FREE( old_message );
-
                 break;
             }
             else
             {
-                ch_message_t * old_message = _service->messages->prev->prev;
+                --_service->messages_count[index];
+
+                ch_message_t * old_message = _service->messages[index]->prev;
 
                 CH_RING_REMOVE( old_message );
 
@@ -291,45 +292,53 @@ static ch_result_t __ch_service_unmutex_get_message( ch_service_t * _service, ch
             }
         }
 
-        ch_message_t * message = _service->messages;
-        _service->messages = message->prev;
+        ch_message_t * message = _service->messages[index]->prev;
+        _service->messages[index] = message;
 
         *_message = message;
 
         return CH_SUCCESSFUL;
     }
 
-    if( _service->messages_count >= _service->messages_max )
+    if( _service->messages_count[index] >= _service->messages_max )
     {
-        ch_message_t * message = _service->messages;
-        _service->messages = message->prev;
+        ch_message_t * message = _service->messages[index]->prev;
+        _service->messages[index] = message;
 
         *_message = message;
 
         return CH_SUCCESSFUL;
     }
 
-    ch_message_t * message = CH_NEW( ch_message_t );
+    ch_message_t * message = CH_NEWE( ch_message_t, capacity );
 
     if( message == CH_NULLPTR )
     {
         return CH_FAILURE;
     }
 
-    CH_RING_PUSH_FRONT( _service->messages, message );
+    message->capacity = capacity;
 
-    ++_service->messages_count;
+    CH_RING_PUSH_BACK( _service->messages[index], message);
+    _service->messages[index] = message;
+
+    ++_service->messages_count[index];
 
     *_message = message;
 
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_service_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_message_t ** _message )
+ch_result_t ch_service_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_size_t _size, ch_message_t ** _message )
 {
+    if( _size >= CH_MESSAGE_TEXT_MAX )
+    {
+        return CH_FAILURE;
+    }
+
     ch_mutex_lock( _service->messages_mutex );
 
-    ch_result_t result = __ch_service_unmutex_get_message( _service, _timestamp, _message );
+    ch_result_t result = __ch_service_unmutex_get_message( _service, _timestamp, _size, _message );
 
     if( result == CH_SUCCESSFUL )
     {
@@ -339,6 +348,15 @@ ch_result_t ch_service_get_message( ch_service_t * _service, ch_time_t _timestam
     ch_mutex_unlock( _service->messages_mutex );
 
     return result;
+}
+//////////////////////////////////////////////////////////////////////////
+ch_result_t ch_service_get_message_empty( ch_service_t * _service, ch_time_t _timestamp, ch_message_t ** _message )
+{
+    CH_UNUSED( _timestamp );
+
+    *_message = _service->message_empty;
+
+    return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
 static void __ch_service_init_attribute( ch_attribute_t * _attribute, ch_time_t _timestamp )
@@ -375,27 +393,15 @@ static ch_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
     {
         while( _timestamp - _service->attributes->prev->prev->created_timestamp >= _service->timemax )
         {
-            --_service->attributes_count;
-
-            if( _service->attributes_count == 0 )
+            if( _service->attributes_count == 1 )
             {
-                _service->attributes_count = 1;
-
-                break;
-            }
-            else if( _service->attributes_count == 1 )
-            {
-                ch_attribute_t * old_attribute = _service->attributes->prev;
-
-                CH_RING_REMOVE( old_attribute );
-
-                CH_FREE( old_attribute );
-
                 break;
             }
             else
             {
-                ch_attribute_t * old_attribute = _service->attributes->prev->prev;
+                --_service->attributes_count;
+
+                ch_attribute_t * old_attribute = _service->attributes->prev;
 
                 CH_RING_REMOVE( old_attribute );
 
@@ -403,8 +409,8 @@ static ch_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
             }
         }
 
-        ch_attribute_t * attribute = _service->attributes;
-        _service->attributes = attribute->prev;
+        ch_attribute_t * attribute = _service->attributes->prev;
+        _service->attributes = attribute;
 
         *_attribute = attribute;
 
@@ -413,8 +419,8 @@ static ch_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
 
     if( _service->attributes_count >= _service->attributes_max )
     {
-        ch_attribute_t * attribute = _service->attributes;
-        _service->attributes = attribute->prev;
+        ch_attribute_t * attribute = _service->attributes->prev;
+        _service->attributes = attribute;
 
         *_attribute = attribute;
 
@@ -428,7 +434,8 @@ static ch_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
         return CH_FAILURE;
     }
 
-    CH_RING_PUSH_FRONT( _service->attributes, attribute );
+    CH_RING_PUSH_BACK( _service->attributes, attribute );
+    _service->attributes = attribute;
 
     ++_service->attributes_count;
 
@@ -467,12 +474,12 @@ ch_result_t ch_service_select_records( ch_service_t * _service, ch_time_t _times
 
         do
         {
-            if( _timestamp - record->created_timestamp > _service->timemax )
+            if( _timestamp - record->created_timestamp >= _service->timemax )
             {
                 break;
             }
 
-            if( _timestamp - record->created_timestamp > _timelimit )
+            if( _timestamp - record->created_timestamp >= _timelimit )
             {
                 break;
             }
