@@ -246,9 +246,26 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     response_offset += sprintf( ud->response + *ud->size + response_offset, "}" );
 
-    response_offset += sprintf( ud->response + *ud->size + response_offset, ",\"attributes\":{" );
+    response_offset += sprintf( ud->response + *ud->size + response_offset, ",\"tags\":[" );
 
-    response_offset += sprintf( ud->response + *ud->size + response_offset, "}}" );
+    for( ch_size_t tags_index = 0; tags_index != CH_RECORD_TAGS_MAX; ++tags_index )
+    {
+        const ch_tag_t * tag = _record->tags[tags_index];
+
+        if( tag == CH_NULLPTR )
+        {
+            break;
+        }
+
+        response_offset += sprintf( ud->response + *ud->size + response_offset, "%s\"%s\""
+            , tags_index == 0 ? "" : ","
+            , tag->value
+        );
+    }
+
+    response_offset += sprintf( ud->response + *ud->size + response_offset, "]" );
+
+    response_offset += sprintf( ud->response + *ud->size + response_offset, "}" );
 
     *ud->size += response_offset;
 }
@@ -294,6 +311,8 @@ ch_http_code_t ch_grid_request_select( const ch_json_handle_t * _json, ch_servic
     filter.attributes_count = 0;
     filter.attributes_name[0][0] = '\0';
     filter.attributes_value[0][0] = '\0';
+    filter.tags_count = 0;
+    filter.tags_value[0][0] = '\0';
 
     ch_json_handle_t * json_filter = CH_NULLPTR;
     if( ch_json_get_field( _json, "filter", &json_filter ) == CH_SUCCESSFUL )
