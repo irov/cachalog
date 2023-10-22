@@ -16,7 +16,7 @@ static ch_result_t __ch_service_create_messages( ch_service_t * _service )
         return CH_FAILURE;
     }
 
-    _service->messages_mutex = mutex;    
+    _service->messages_mutex = mutex;
     _service->messages_max = _service->capacity;
 
     for( uint32_t index = 0; index != 7; ++index )
@@ -72,6 +72,23 @@ static ch_result_t __ch_service_create_attributes( ch_service_t * _service )
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
+static ch_result_t __ch_service_create_tags( ch_service_t * _service )
+{
+    ch_mutex_handle_t * mutex;
+    if( ch_mutex_create( &mutex ) == CH_FAILURE )
+    {
+        return CH_FAILURE;
+    }
+
+    _service->tags_mutex = mutex;
+    _service->tags_count = 0;
+    _service->tags_max = _service->capacity * CH_RECORD_TAGS_MAX;
+
+    _service->tags = CH_NULLPTR;
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
 ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, ch_time_t _timemax )
 {
     ch_service_t * service = CH_NEW( ch_service_t );
@@ -86,7 +103,7 @@ ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, ch_
 
     ch_time_t timestamp;
     ch_time( &timestamp );
-    
+
     service->created_timestamp = timestamp;
 
     if( __ch_service_create_messages( service ) == CH_FAILURE )
@@ -104,6 +121,11 @@ ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, ch_
         return CH_FAILURE;
     }
 
+    if( __ch_service_create_tags( service ) == CH_FAILURE )
+    {
+        return CH_FAILURE;
+    }
+
     *_service = service;
 
     return CH_SUCCESSFUL;
@@ -115,6 +137,7 @@ static void __ch_service_init_record( ch_record_t * _record, ch_time_t _timestam
     _record->created_timestamp = _timestamp;
     _record->id = _id;
     _record->rnd = _rnd;
+    _record->flags = CH_RECORD_ATTRIBUTE_NONE;
     _record->service[0] = '\0';
     _record->user_id[0] = '\0';
     _record->message = CH_NULLPTR;
@@ -135,6 +158,11 @@ static void __ch_service_init_record( ch_record_t * _record, ch_time_t _timestam
     for( ch_size_t index = 0; index != CH_RECORD_ATTRIBUTES_MAX; ++index )
     {
         _record->attributes[index] = CH_NULLPTR;
+    }
+
+    for( ch_size_t index = 0; index != CH_RECORD_TAGS_MAX; ++index )
+    {
+        _record->tags[index] = CH_NULLPTR;
     }
 }
 //////////////////////////////////////////////////////////////////////////
@@ -264,7 +292,7 @@ static ch_result_t __ch_service_unmutex_get_message( ch_service_t * _service, ch
         CH_RING_INIT( message );
 
         _service->messages[index] = message;
-        
+
         ++_service->messages_count[index];
 
         *_message = message;
@@ -319,7 +347,7 @@ static ch_result_t __ch_service_unmutex_get_message( ch_service_t * _service, ch
 
     message->capacity = capacity;
 
-    CH_RING_PUSH_BACK( _service->messages[index], message);
+    CH_RING_PUSH_BACK( _service->messages[index], message );
     _service->messages[index] = message;
 
     ++_service->messages_count[index];
@@ -460,11 +488,111 @@ ch_result_t ch_service_get_attribute( ch_service_t * _service, ch_time_t _timest
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
+static void __ch_service_init_tag( ch_tag_t * _tag, ch_time_t _timestamp )
+{
+    _tag->created_timestamp = _timestamp;
+
+    _tag->value[0] = '\0';
+}
+//////////////////////////////////////////////////////////////////////////
+static ch_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, ch_time_t _timestamp, ch_tag_t ** _tag )
+{
+    if( _service->tags == CH_NULLPTR )
+    {
+        ch_tag_t * tag = CH_NEW( ch_tag_t );
+
+        if( tag == CH_NULLPTR )
+        {
+            return CH_FAILURE;
+        }
+
+        CH_RING_INIT( tag );
+
+        _service->tags = tag;
+
+        ++_service->tags_count;
+
+        *_tag = tag;
+
+        return CH_SUCCESSFUL;
+    }
+
+    if( _timestamp - _service->tags->prev->created_timestamp >= _service->timemax )
+    {
+        while( _timestamp - _service->tags->prev->prev->created_timestamp >= _service->timemax )
+        {
+            if( _service->tags_count == 1 )
+            {
+                break;
+            }
+            else
+            {
+                --_service->tags_count;
+
+                ch_tag_t * old_tag = _service->tags->prev;
+
+                CH_RING_REMOVE( old_tag );
+
+                CH_FREE( old_tag );
+            }
+        }
+
+        ch_tag_t * tag = _service->tags->prev;
+        _service->tags = tag;
+
+        *_tag = tag;
+
+        return CH_SUCCESSFUL;
+    }
+
+    if( _service->tags_count >= _service->tags_max )
+    {
+        ch_tag_t * tag = _service->tags->prev;
+        _service->tags = tag;
+
+        *_tag = tag;
+
+        return CH_SUCCESSFUL;
+    }
+
+    ch_tag_t * tag = CH_NEW( ch_tag_t );
+
+    if( tag == CH_NULLPTR )
+    {
+        return CH_FAILURE;
+    }
+
+    CH_RING_PUSH_BACK( _service->tags, tag );
+    _service->tags = tag;
+
+    ++_service->tags_count;
+
+    *_tag = tag;
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
+ch_result_t ch_service_get_tag( ch_service_t * _service, ch_time_t _timestamp, ch_tag_t ** _tag )
+{
+    ch_mutex_lock( _service->tags_mutex );
+
+    ch_result_t result = __ch_service_unmutex_get_tag( _service, _timestamp, _tag );
+
+    if( result == CH_SUCCESSFUL )
+    {
+        __ch_service_init_tag( *_tag, _timestamp );
+    }
+
+    ch_mutex_unlock( _service->tags_mutex );
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
 ch_result_t ch_service_select_records( ch_service_t * _service, ch_time_t _timestamp, ch_time_t _timeoffset, ch_time_t _timelimit, ch_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
 {
     ch_mutex_lock( _service->records_mutex );
 
-    ch_record_t * root_record = _service->records;    
+    ch_record_t * root_record = _service->records;
 
     if( root_record != CH_NULLPTR )
     {

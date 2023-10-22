@@ -37,7 +37,7 @@ ch_result_t ch_json_create( const void * _data, ch_size_t _size, void * _pool, c
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_array_count( const ch_json_handle_t * _handle, ch_size_t * const _size )
+ch_result_t ch_json_get_array_count( const ch_json_handle_t * _handle, ch_size_t * const _size )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -53,7 +53,7 @@ ch_result_t ch_json_array_count( const ch_json_handle_t * _handle, ch_size_t * c
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_array_get( const ch_json_handle_t * _handle, ch_size_t _index, ch_json_handle_t ** _out )
+ch_result_t ch_json_get_array_element( const ch_json_handle_t * _handle, ch_size_t _index, ch_json_handle_t ** _out )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -209,7 +209,7 @@ ch_result_t ch_json_copy_string( const ch_json_handle_t * _handle, char * _value
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_to_bool( const ch_json_handle_t * _handle, ch_bool_t * const _value )
+ch_result_t ch_json_to_boolean( const ch_json_handle_t * _handle, ch_bool_t * const _value )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -561,7 +561,7 @@ ch_result_t ch_json_copy_field_string( const ch_json_handle_t * _handle, const c
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _length, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _handle, const char * _key, ch_size_t * const _length, ch_bool_t * const _required )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -587,7 +587,7 @@ ch_result_t ch_json_get_field_string_length_required( const ch_json_handle_t * _
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle, const char * _key, char * _value, ch_size_t _capacity, ch_size_t * _length, ch_bool_t * _required )
+ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle, const char * _key, char * const _value, ch_size_t _capacity, ch_size_t * _length, ch_bool_t * _required )
 {
     yyjson_val * val = (yyjson_val *)_handle;
 
@@ -617,7 +617,25 @@ ch_result_t ch_json_copy_field_string_required( const ch_json_handle_t * _handle
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_int16( const ch_json_handle_t * _handle, const char * _key, int16_t * _value, int16_t _default )
+ch_result_t ch_json_get_field_boolean( const ch_json_handle_t * _handle, const char * _key, ch_bool_t * const _value, int16_t _default )
+{
+    ch_json_handle_t * field;
+    if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
+    {
+        *_value = _default;
+
+        return CH_SUCCESSFUL;
+    }
+
+    if( ch_json_to_boolean( field, _value ) == CH_FAILURE )
+    {
+        return CH_FAILURE;
+    }
+
+    return CH_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
+ch_result_t ch_json_get_field_int16( const ch_json_handle_t * _handle, const char * _key, int16_t * const _value, int16_t _default )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -635,7 +653,7 @@ ch_result_t ch_json_get_field_int16( const ch_json_handle_t * _handle, const cha
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_int32( const ch_json_handle_t * _handle, const char * _key, int32_t * _value, int32_t _default )
+ch_result_t ch_json_get_field_int32( const ch_json_handle_t * _handle, const char * _key, int32_t * const _value, int32_t _default )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -653,7 +671,7 @@ ch_result_t ch_json_get_field_int32( const ch_json_handle_t * _handle, const cha
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_int64( const ch_json_handle_t * _handle, const char * _key, int64_t * _value, int64_t _default )
+ch_result_t ch_json_get_field_int64( const ch_json_handle_t * _handle, const char * _key, int64_t * const _value, int64_t _default )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -707,7 +725,7 @@ ch_result_t ch_json_get_field_uint32( const ch_json_handle_t * _handle, const ch
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_uint64( const ch_json_handle_t * _handle, const char * _key, uint64_t * _value, uint64_t _default )
+ch_result_t ch_json_get_field_uint64( const ch_json_handle_t * _handle, const char * _key, uint64_t * const _value, uint64_t _default )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -725,7 +743,7 @@ ch_result_t ch_json_get_field_uint64( const ch_json_handle_t * _handle, const ch
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_size_t( const ch_json_handle_t * _handle, const char * _key, ch_size_t * _value, ch_size_t _default )
+ch_result_t ch_json_get_field_size_t( const ch_json_handle_t * _handle, const char * _key, ch_size_t * const _value, ch_size_t _default )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -743,7 +761,7 @@ ch_result_t ch_json_get_field_size_t( const ch_json_handle_t * _handle, const ch
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_bool_required( const ch_json_handle_t * _handle, const char * _key, ch_bool_t * _value, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_boolean_required( const ch_json_handle_t * _handle, const char * _key, ch_bool_t * const _value, ch_bool_t * const _required )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -753,7 +771,7 @@ ch_result_t ch_json_get_field_bool_required( const ch_json_handle_t * _handle, c
         return CH_SUCCESSFUL;
     }
 
-    if( ch_json_to_bool( field, _value ) == CH_FAILURE )
+    if( ch_json_to_boolean( field, _value ) == CH_FAILURE )
     {
         return CH_FAILURE;
     }
@@ -761,7 +779,7 @@ ch_result_t ch_json_get_field_bool_required( const ch_json_handle_t * _handle, c
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_int32_required( const ch_json_handle_t * _handle, const char * _key, int32_t * _value, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_int32_required( const ch_json_handle_t * _handle, const char * _key, int32_t * const _value, ch_bool_t * const _required )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -779,7 +797,7 @@ ch_result_t ch_json_get_field_int32_required( const ch_json_handle_t * _handle, 
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_uint32_required( const ch_json_handle_t * _handle, const char * _key, uint32_t * _value, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_uint32_required( const ch_json_handle_t * _handle, const char * _key, uint32_t * const _value, ch_bool_t * const _required )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -797,7 +815,7 @@ ch_result_t ch_json_get_field_uint32_required( const ch_json_handle_t * _handle,
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_int64_required( const ch_json_handle_t * _handle, const char * _key, int64_t * _value, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_int64_required( const ch_json_handle_t * _handle, const char * _key, int64_t * const _value, ch_bool_t * const _required )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )
@@ -815,7 +833,7 @@ ch_result_t ch_json_get_field_int64_required( const ch_json_handle_t * _handle, 
     return CH_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_result_t ch_json_get_field_uint64_required( const ch_json_handle_t * _handle, const char * _key, uint64_t * _value, ch_bool_t * const _required )
+ch_result_t ch_json_get_field_uint64_required( const ch_json_handle_t * _handle, const char * _key, uint64_t * const _value, ch_bool_t * const _required )
 {
     ch_json_handle_t * field;
     if( ch_json_get_field( _handle, _key, &field ) == CH_FAILURE )

@@ -11,8 +11,6 @@ typedef struct ch_attribute_t
 {
     CH_RING_DECLARE( ch_attribute_t );
 
-    struct ch_record_t * record;
-
     ch_time_t created_timestamp;
 
     char name[CH_ATTRIBUTE_NAME_MAX];

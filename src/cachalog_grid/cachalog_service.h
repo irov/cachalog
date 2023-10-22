@@ -31,6 +31,11 @@ typedef struct ch_service_t
     ch_size_t attributes_count;
     ch_size_t attributes_max;
     ch_attribute_t * attributes;
+
+    ch_mutex_handle_t * tags_mutex;
+    ch_size_t tags_count;
+    ch_size_t tags_max;
+    ch_tag_t * tags;
 } ch_service_t;
 
 ch_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, ch_time_t _timemax );
@@ -38,6 +43,7 @@ ch_result_t ch_service_get_record( ch_service_t * _service, ch_time_t _timestamp
 ch_result_t ch_service_get_message( ch_service_t * _service, ch_time_t _timestamp, ch_size_t _size, ch_message_t ** _message );
 ch_result_t ch_service_get_message_empty( ch_service_t * _service, ch_time_t _timestamp, ch_message_t ** _message );
 ch_result_t ch_service_get_attribute( ch_service_t * _service, ch_time_t _timestamp, ch_attribute_t ** _attribute );
+ch_result_t ch_service_get_tag( ch_service_t * _service, ch_time_t _timestamp, ch_tag_t ** _tag );
 
 typedef void(*ch_service_records_visitor_t)(uint64_t _index, const ch_record_t * _record, void * _ud);
 

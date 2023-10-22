@@ -34,6 +34,10 @@ class Testing(unittest.TestCase):
             data_insert["attributes"]["cik_value"] = "0697e656ca1824f5"
             data_insert["attributes"]["cik_timestamp"] = "1696072383"
             
+            data_insert["tags"] = []
+            data_insert["tags"] += ["game"]
+            data_insert["tags"] += ["food"]
+            
             print("insert token: {0} data: {1}".format(token, data_insert))
             jresult_insert = cachalog.post("http://localhost:5555/{0}/insert".format(token), **data_insert)
             print("response: ", jresult_insert)

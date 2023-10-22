@@ -5,6 +5,7 @@ src
     main.c
     
     cachalog_attribute.h
+    cachalog_tag.h
     cachalog_record.h
     cachalog_message.h
     cachalog_service.h
