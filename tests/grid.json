@@ -3,10 +3,10 @@
   "max_record": 50,
   "max_time": 30,
     
-  "grid_uri": "127.0.0.1",
+  "grid_uri": "::1",
   "grid_port": 5555,
   
   "token": "cb57466281a8f398aa63416b8b499978",
   
-  "name": "cachalog"
+  "name": "cachalot"
 }
