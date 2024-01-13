@@ -14,23 +14,26 @@ class Testing(unittest.TestCase):
     def test_00_log(self):
         token = "cb57466281a8f398aa63416b8b499978"
     
-        for i in range(500):
+        for i in range(5):
             rnd = random.randrange(0, 1696072383)
             data_insert = {}
-            data_insert["service"] = "test"
             data_insert["user.id"] = "user{0}".format(i)
-            data_insert["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 800))) + "END1234567890"
-            #data_insert["category"] = "common"
-            #data_insert["level"] = 3
-            #data_insert["timestamp"] = int(time.time()) 
-            #data_insert["live"] = 2383
-            #data_insert["build.environment"] = "dev"
-            #data_insert["build.release"] = True
-            #data_insert["build.version"] = "1.0.0"
-            #data_insert["build.number"] = 12345
-            #data_insert["device.model"] = "12345"
-            #data_insert["os.family"] = "Android"
-            #data_insert["os.version"] = "12"
+            data_insert["level"] = 3
+            data_insert["service"] = "test"
+            data_insert["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 50))) + "END1234567890"
+            data_insert["file"] = "test.cpp"
+            data_insert["line"] = 378
+            data_insert["timestamp"] = int(time.time())
+            data_insert["live"] = 2383
+            data_insert["build.environment"] = "dev"
+            data_insert["build.release"] = True
+            data_insert["build.version"] = "1.0.0"
+            data_insert["build.number"] = 12345
+            
+            data_insert["device.model"] = "12345"
+            
+            data_insert["os.family"] = "Android"
+            data_insert["os.version"] = "12"
             
             data_insert["attributes"] = {}
             data_insert["attributes"]["cik_value"] = "0697e656ca1824f5"
@@ -54,7 +57,7 @@ class Testing(unittest.TestCase):
     
         print("select token: {0} data: {1}".format(token, data_select))
         jresult_select = cachalot.post(server, "{0}/select".format(token), **data_select)
-        print("response: ", jresult_select)
+        print("response: ", json.dumps(jresult_select))
 
         self.assertIsNotNone(jresult_select)
     pass
