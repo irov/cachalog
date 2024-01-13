@@ -7,7 +7,6 @@
 
 #include "hb_log/hb_log.h"
 
-#include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -21,15 +20,16 @@ typedef struct records_filter_t
     char message[CH_MESSAGE_TEXT_MAX];
     char file[CH_MESSAGE_TEXT_MAX];
     uint32_t line;
+    char category[CH_RECORD_CATEGORY_MAX];
     uint32_t level;
     hb_time_t timestamp;
     hb_time_t live;
-
+    
     char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX];
     hb_bool_t build_release;
     char build_version[CH_RECORD_BUILD_VERSION_MAX];
     uint64_t build_number;
-
+    
     char device_model[CH_RECORD_DEVICE_MODEL_MAX];
 
     char os_family[CH_RECORD_OS_FAMILY_MAX];
@@ -69,11 +69,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             return;
         }
 
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LEVEL ) && filter->level != _record->level )
-        {
-            return;
-        }
-
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_SERVICE ) && strstr( filter->service, _record->service ) == HB_NULLPTR )
         {
             return;
@@ -90,6 +85,16 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
 
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LINE ) && filter->line != _record->line )
+        {
+            return;
+        }
+
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_CATEGORY ) && strstr( filter->category, _record->category ) == HB_NULLPTR )
+        {
+            return;
+        }
+
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LEVEL ) && filter->level != _record->level )
         {
             return;
         }
@@ -222,13 +227,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         );
     }
 
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
-    {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"level\":%" PRIu32 ""
-            , _record->level
-        );
-    }
-
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_SERVICE ) )
     {
         *ud->size += sprintf( ud->response + *ud->size, ",\"service\":\"%s\""
@@ -252,21 +250,35 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LINE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"line\":%" PRIu32 ""
+        *ud->size += sprintf( ud->response + *ud->size, ",\"line\":%u"
             , _record->line
+        );
+    }
+
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_CATEGORY ) )
+    {
+        *ud->size += sprintf( ud->response + *ud->size, ",\"category\":\"%s\""
+            , _record->category
+        );
+    }
+
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
+    {
+        *ud->size += sprintf( ud->response + *ud->size, ",\"level\":%u"
+            , _record->level
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TIMESTAMP ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"timestamp\":%" PRIu64 ""
+        *ud->size += sprintf( ud->response + *ud->size, ",\"timestamp\":%llu"
             , _record->timestamp
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LIVE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"live\":%" PRIu64 ""
+        *ud->size += sprintf( ud->response + *ud->size, ",\"live\":%llu"
             , _record->live
         );
     }
@@ -294,7 +306,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_NUMBER ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.number\":%" PRIu64 ""
+        *ud->size += sprintf( ud->response + *ud->size, ",\"build.number\":%llu"
             , _record->build_number
         );
     }
@@ -398,6 +410,7 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     filter.message[0] = '\0';
     filter.file[0] = '\0';
     filter.line = 0;
+    filter.category[0] = '\0';
     filter.level = 0;
     filter.timestamp = 0;
     filter.live = 0;
@@ -422,6 +435,7 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
         hb_json_copy_field_string( json_filter, "message", filter.message, CH_MESSAGE_TEXT_MAX );
         hb_json_copy_field_string( json_filter, "file", filter.file, CH_MESSAGE_TEXT_MAX );
         hb_json_get_field_uint32( json_filter, "line", &filter.line );
+        hb_json_copy_field_string( json_filter, "category", filter.category, CH_RECORD_CATEGORY_MAX );
         hb_json_get_field_uint32( json_filter, "level", &filter.level );
         hb_json_get_field_uint64( json_filter, "timestamp", &filter.timestamp );
         hb_json_get_field_uint64( json_filter, "live", &filter.live );

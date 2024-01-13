@@ -11,6 +11,7 @@
 
 #define CH_RECORD_SERVICE_MAX 16
 #define CH_RECORD_USER_ID_MAX 64
+#define CH_RECORD_CATEGORY_MAX 16
 #define CH_RECORD_BUILD_ENVIRONMENT_MAX 16
 #define CH_RECORD_BUILD_VERSION_MAX 32
 #define CH_RECORD_DEVICE_MODEL_MAX 32
@@ -18,18 +19,19 @@
 #define CH_RECORD_OS_VERSION_MAX 16
 
 #define CH_RECORD_ATTRIBUTES_MAX 20
-#define CH_RECORD_TAGS_MAX 16
+#define CH_RECORD_TAGS_MAX 8
 
 typedef enum ch_record_attributes_flag_e
 {
     CH_RECORD_ATTRIBUTE_NONE,
     CH_RECORD_ATTRIBUTE_USER_ID,
-    CH_RECORD_ATTRIBUTE_LEVEL,
-    CH_RECORD_ATTRIBUTE_SERVICE,
+    CH_RECORD_ATTRIBUTE_SERVICE,    
     CH_RECORD_ATTRIBUTE_MESSAGE,
     CH_RECORD_ATTRIBUTE_FILE,
     CH_RECORD_ATTRIBUTE_LINE,
-    CH_RECORD_ATTRIBUTE_TIMESTAMP,
+    CH_RECORD_ATTRIBUTE_CATEGORY,
+    CH_RECORD_ATTRIBUTE_LEVEL,
+    CH_RECORD_ATTRIBUTE_TIMESTAMP,    
     CH_RECORD_ATTRIBUTE_LIVE,
     CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT,
     CH_RECORD_ATTRIBUTE_BUILD_RELEASE,
@@ -55,15 +57,13 @@ typedef struct ch_record_t
     uint64_t flags;
 
     char user_id[CH_RECORD_USER_ID_MAX];
-    uint32_t level;
-
-    char service[CH_RECORD_SERVICE_MAX];
-
+    char service[CH_RECORD_SERVICE_MAX];    
+    
     const ch_message_t * message;
-
     const ch_message_t * file;
     uint32_t line;
-
+    char category[CH_RECORD_CATEGORY_MAX];
+    uint32_t level;
     uint64_t timestamp;
     uint64_t live;
 
@@ -73,7 +73,7 @@ typedef struct ch_record_t
     uint64_t build_number;
 
     char device_model[CH_RECORD_DEVICE_MODEL_MAX];
-
+    
     char os_family[CH_RECORD_OS_FAMILY_MAX];
     char os_version[CH_RECORD_OS_VERSION_MAX];
 

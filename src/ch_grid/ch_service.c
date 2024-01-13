@@ -143,6 +143,7 @@ static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestam
     _record->message = HB_NULLPTR;
     _record->file = HB_NULLPTR;
     _record->line = 0;
+    _record->category[0] = '\0';
     _record->level = 0;
     _record->timestamp = 0;
     _record->live = 0;

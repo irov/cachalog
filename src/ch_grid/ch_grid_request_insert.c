@@ -171,6 +171,7 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
     }
 
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_SERVICE, _json, "service", record->service, sizeof( record->service ) );
+    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_CATEGORY, _json, "category", record->category, sizeof( record->category ) );
 
     const char * file_value;
     hb_size_t file_length;
