@@ -399,9 +399,9 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     hb_time_t time_offset = 0;
     hb_time_t time_limit = HB_TIME_SECONDS_IN_DAY;
     hb_size_t count_limit = 100;
-    hb_json_get_field_uint64_default( _json, "time.offset", &time_offset, 0 );
-    hb_json_get_field_uint64_default( _json, "time.limit", &time_limit, HB_TIME_SECONDS_IN_DAY );
-    hb_json_get_field_size_t_default( _json, "count.limit", &count_limit, 100 );
+    hb_json_get_field_uint64( _json, "time.offset", &time_offset );
+    hb_json_get_field_uint64( _json, "time.limit", &time_limit );
+    hb_json_get_field_size_t( _json, "count.limit", &count_limit );
 
     records_filter_t filter;
     filter.flags = 0;
