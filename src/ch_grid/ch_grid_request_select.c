@@ -7,29 +7,33 @@
 
 #include "hb_log/hb_log.h"
 
+#include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
 
 //////////////////////////////////////////////////////////////////////////
-typedef struct records_filter_t
+typedef struct ch_records_filter_t
 {
     uint64_t flags;
 
-    char service[CH_RECORD_SERVICE_MAX];
     char user_id[CH_RECORD_USER_ID_MAX];
+    uint32_t level;
+
+    char service[CH_RECORD_SERVICE_MAX];
+
     char message[CH_MESSAGE_TEXT_MAX];
+
     char file[CH_MESSAGE_TEXT_MAX];
     uint32_t line;
-    char category[CH_RECORD_CATEGORY_MAX];
-    uint32_t level;
+
     hb_time_t timestamp;
     hb_time_t live;
-    
+
     char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX];
     hb_bool_t build_release;
     char build_version[CH_RECORD_BUILD_VERSION_MAX];
     uint64_t build_number;
-    
+
     char device_model[CH_RECORD_DEVICE_MODEL_MAX];
 
     char os_family[CH_RECORD_OS_FAMILY_MAX];
@@ -41,21 +45,21 @@ typedef struct records_filter_t
 
     hb_size_t tags_count;
     char tags_value[CH_RECORD_TAGS_MAX][CH_TAG_VALUE_MAX];
-} records_filter_t;
+} ch_records_filter_t;
 //////////////////////////////////////////////////////////////////////////
-typedef struct records_visitor_select_t
+typedef struct ch_records_visitor_select_t
 {
-    const records_filter_t * filter;
+    const ch_records_filter_t * filter;
 
     char * response;
     hb_size_t * size;
-} records_visitor_select_t;
+} ch_records_visitor_select_t;
 //////////////////////////////////////////////////////////////////////////
 static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t * _record, void * _ud )
 {
-    records_visitor_select_t * ud = (records_visitor_select_t *)_ud;
+    ch_records_visitor_select_t * ud = (ch_records_visitor_select_t *)_ud;
 
-    const records_filter_t * filter = ud->filter;
+    const ch_records_filter_t * filter = ud->filter;
 
     if( filter != HB_NULLPTR )
     {
@@ -65,6 +69,11 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
 
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_USER_ID ) && strstr( filter->user_id, _record->user_id ) == HB_NULLPTR )
+        {
+            return;
+        }
+
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LEVEL ) && filter->level != _record->level )
         {
             return;
         }
@@ -85,16 +94,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
 
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LINE ) && filter->line != _record->line )
-        {
-            return;
-        }
-
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_CATEGORY ) && strstr( filter->category, _record->category ) == HB_NULLPTR )
-        {
-            return;
-        }
-
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LEVEL ) && filter->level != _record->level )
         {
             return;
         }
@@ -227,6 +226,13 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         );
     }
 
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
+    {
+        *ud->size += sprintf( ud->response + *ud->size, ",\"level\":%" PRIu32 ""
+            , _record->level
+        );
+    }
+
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_SERVICE ) )
     {
         *ud->size += sprintf( ud->response + *ud->size, ",\"service\":\"%s\""
@@ -250,35 +256,21 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LINE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"line\":%u"
+        *ud->size += sprintf( ud->response + *ud->size, ",\"line\":%" PRIu32 ""
             , _record->line
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_CATEGORY ) )
-    {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"category\":\"%s\""
-            , _record->category
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
-    {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"level\":%u"
-            , _record->level
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TIMESTAMP ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"timestamp\":%llu"
+        *ud->size += sprintf( ud->response + *ud->size, ",\"timestamp\":%" PRIu64 ""
             , _record->timestamp
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LIVE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"live\":%llu"
+        *ud->size += sprintf( ud->response + *ud->size, ",\"live\":%" PRIu64 ""
             , _record->live
         );
     }
@@ -306,7 +298,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_NUMBER ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.number\":%llu"
+        *ud->size += sprintf( ud->response + *ud->size, ",\"build.number\":%" PRIu64 ""
             , _record->build_number
         );
     }
@@ -403,14 +395,13 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     hb_json_get_field_uint64( _json, "time.limit", &time_limit );
     hb_json_get_field_size_t( _json, "count.limit", &count_limit );
 
-    records_filter_t filter;
+    ch_records_filter_t filter;
     filter.flags = 0;
     filter.service[0] = '\0';
     filter.user_id[0] = '\0';
     filter.message[0] = '\0';
     filter.file[0] = '\0';
     filter.line = 0;
-    filter.category[0] = '\0';
     filter.level = 0;
     filter.timestamp = 0;
     filter.live = 0;
@@ -430,22 +421,21 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     hb_json_handle_t * json_filter = HB_NULLPTR;
     if( hb_json_object_get_field( _json, "filter", &json_filter ) == HB_SUCCESSFUL )
     {
-        hb_json_copy_field_string( json_filter, "service", filter.service, CH_RECORD_SERVICE_MAX );
-        hb_json_copy_field_string( json_filter, "user.id", filter.user_id, CH_RECORD_USER_ID_MAX );
-        hb_json_copy_field_string( json_filter, "message", filter.message, CH_MESSAGE_TEXT_MAX );
-        hb_json_copy_field_string( json_filter, "file", filter.file, CH_MESSAGE_TEXT_MAX );
+        hb_json_copy_field_string( json_filter, "user.id", filter.user_id, sizeof( filter.user_id ) );
+        hb_json_copy_field_string( json_filter, "service", filter.service, sizeof( filter.service ) );
+        hb_json_copy_field_string( json_filter, "message", filter.message, sizeof( filter.message ) );
+        hb_json_copy_field_string( json_filter, "file", filter.file, sizeof( filter.file ) );
         hb_json_get_field_uint32( json_filter, "line", &filter.line );
-        hb_json_copy_field_string( json_filter, "category", filter.category, CH_RECORD_CATEGORY_MAX );
         hb_json_get_field_uint32( json_filter, "level", &filter.level );
         hb_json_get_field_uint64( json_filter, "timestamp", &filter.timestamp );
         hb_json_get_field_uint64( json_filter, "live", &filter.live );
-        hb_json_copy_field_string( json_filter, "build.environment", filter.build_environment, CH_RECORD_BUILD_ENVIRONMENT_MAX );
+        hb_json_copy_field_string( json_filter, "build.environment", filter.build_environment, sizeof( filter.build_environment ) );
         hb_json_get_field_boolean( json_filter, "build.release", &filter.build_release );
-        hb_json_copy_field_string( json_filter, "build.version", filter.build_version, CH_RECORD_BUILD_VERSION_MAX );
+        hb_json_copy_field_string( json_filter, "build.version", filter.build_version, sizeof( filter.build_version ) );
         hb_json_get_field_uint64( json_filter, "build.number", &filter.build_number );
-        hb_json_copy_field_string( json_filter, "device.model", filter.device_model, CH_RECORD_DEVICE_MODEL_MAX );
-        hb_json_copy_field_string( json_filter, "os.family", filter.os_family, CH_RECORD_OS_FAMILY_MAX );
-        hb_json_copy_field_string( json_filter, "os.version", filter.os_version, CH_RECORD_OS_VERSION_MAX );
+        hb_json_copy_field_string( json_filter, "device.model", filter.device_model, sizeof( filter.device_model ) );
+        hb_json_copy_field_string( json_filter, "os.family", filter.os_family, sizeof( filter.os_family ) );
+        hb_json_copy_field_string( json_filter, "os.version", filter.os_version, sizeof( filter.os_version ) );
 
         hb_json_handle_t * json_attributes;
         if( hb_json_object_get_field( json_filter, "attributes", &json_attributes ) == HB_SUCCESSFUL )
@@ -460,10 +450,19 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
             for( hb_size_t index = 0; index != attributes_count; ++index )
             {
                 hb_json_handle_t * json_attribute;
-                if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_SUCCESSFUL )
+                if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_FAILURE )
                 {
-                    hb_json_copy_field_string( json_attribute, "name", filter.attributes_name[index], CH_ATTRIBUTE_NAME_MAX );
-                    hb_json_copy_field_string( json_attribute, "value", filter.attributes_value[index], CH_ATTRIBUTE_VALUE_MAX );
+                    return CH_HTTP_BADREQUEST;
+                }
+
+                if( hb_json_copy_field_string( json_attribute, "name", filter.attributes_name[index], sizeof( filter.attributes_name[index] ) ) == HB_FAILURE )
+                {
+                    return CH_HTTP_BADREQUEST;
+                }
+
+                if( hb_json_copy_field_string( json_attribute, "value", filter.attributes_value[index], sizeof( filter.attributes_value[index] ) ) == HB_FAILURE )
+                {
+                    return CH_HTTP_BADREQUEST;
                 }
             }
 
@@ -483,12 +482,14 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
             for( hb_size_t index = 0; index != tags_count; ++index )
             {
                 hb_json_handle_t * json_tag;
-                if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_SUCCESSFUL )
+                if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
                 {
-                    if( hb_json_copy_string( json_tag, filter.tags_value[index], CH_TAG_VALUE_MAX, HB_NULLPTR ) == HB_FAILURE )
-                    {
-                        return CH_HTTP_BADREQUEST;
-                    }
+                    return CH_HTTP_BADREQUEST;
+                }
+
+                if( hb_json_copy_string( json_tag, filter.tags_value[index], sizeof( filter.tags_value[index] ), HB_NULLPTR ) == HB_FAILURE )
+                {
+                    return CH_HTTP_BADREQUEST;
                 }
             }
 
@@ -500,7 +501,7 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
 
     *_size = response_offset;
 
-    records_visitor_select_t ud;
+    ch_records_visitor_select_t ud;
     if( json_filter != HB_NULLPTR )
     {
         ud.filter = &filter;

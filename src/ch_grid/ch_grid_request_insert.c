@@ -170,8 +170,36 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_BADREQUEST;
     }
 
+    if( __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LEVEL, _json, "level", &record->level ) == HB_FALSE )
+    {
+        return CH_HTTP_BADREQUEST;
+    }
+
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_SERVICE, _json, "service", record->service, sizeof( record->service ) );
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_CATEGORY, _json, "category", record->category, sizeof( record->category ) );
+
+    const char * message_value;
+    hb_size_t message_length;
+    if( hb_json_get_field_string( _json, "message", &message_value, &message_length ) == HB_SUCCESSFUL )
+    {
+        if( message_length >= CH_MESSAGE_TEXT_MAX )
+        {
+            return CH_HTTP_BADREQUEST;
+        }
+
+        ch_message_t * message;
+        if( ch_service_get_message( _service, timestamp, message_value, message_length, &message ) == HB_FAILURE )
+        {
+            return CH_HTTP_INTERNAL;
+        }
+
+        record->flags |= 1LL << CH_RECORD_ATTRIBUTE_MESSAGE;
+
+        record->message = message;
+    }
+    else
+    {
+        return CH_HTTP_BADREQUEST;
+    }
 
     const char * file_value;
     hb_size_t file_length;
@@ -204,40 +232,19 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
     }
 
     __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LINE, _json, "line", &record->line );
-    __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LEVEL, _json, "level", &record->level );
+
     __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_TIMESTAMP, _json, "timestamp", &record->timestamp );
     __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_LIVE, _json, "live", &record->live );
+
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, _json, "build.environment", record->build_environment, sizeof( record->build_environment ) );
     __record_attribute_boolean( record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, _json, "build.release", &record->build_release );
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, _json, "build.version", record->build_version, sizeof( record->build_version ) );
     __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, _json, "build.number", &record->build_number );
+
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, _json, "device.model", record->device_model, sizeof( record->device_model ) );
+
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_OS_FAMILY, _json, "os.family", record->os_family, sizeof( record->os_family ) );
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_OS_VERSION, _json, "os.version", record->os_version, sizeof( record->os_version ) );
-
-    const char * message_value;
-    hb_size_t message_length;
-    if( hb_json_get_field_string( _json, "message", &message_value, &message_length ) == HB_SUCCESSFUL )
-    {
-        if( message_length >= CH_MESSAGE_TEXT_MAX )
-        {
-            return CH_HTTP_BADREQUEST;
-        }
-
-        ch_message_t * message;
-        if( ch_service_get_message( _service, timestamp, message_value, message_length, &message ) == HB_FAILURE )
-        {
-            return CH_HTTP_INTERNAL;
-        }
-
-        record->flags |= 1LL << CH_RECORD_ATTRIBUTE_MESSAGE;
-
-        record->message = message;
-    }
-    else
-    {
-        return CH_HTTP_BADREQUEST;
-    }
 
     hb_json_handle_t * json_attributes;
     if( hb_json_object_get_field( _json, "attributes", &json_attributes ) == HB_SUCCESSFUL )

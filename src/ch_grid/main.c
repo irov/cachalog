@@ -22,6 +22,7 @@
 #include "evhttp.h"
 #include "event2/thread.h"
 
+#include <inttypes.h>
 #include <stdlib.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -416,7 +417,7 @@ int main( int _argc, char * _argv[] )
     HB_LOG_MESSAGE_INFO( "grid", "------------------------------------" );
     HB_LOG_MESSAGE_INFO( "grid", "max_thread: %u", config->max_thread );
     HB_LOG_MESSAGE_INFO( "grid", "max_record: %u", config->max_record );
-    HB_LOG_MESSAGE_INFO( "grid", "max_time: %llu", config->max_time );
+    HB_LOG_MESSAGE_INFO( "grid", "max_time: %" PRIu64 "", config->max_time );
     HB_LOG_MESSAGE_INFO( "grid", "grid_uri: %s", config->grid_uri );
     HB_LOG_MESSAGE_INFO( "grid", "grid_port: %u", config->grid_port );
     HB_LOG_MESSAGE_INFO( "grid", "name: %s", config->name );
