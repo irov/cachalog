@@ -22,6 +22,8 @@
 #include "evhttp.h"
 #include "event2/thread.h"
 
+#include <stdlib.h>
+
 //////////////////////////////////////////////////////////////////////////
 #ifndef CH_GRID_REQUEST_DATA_MAX_SIZE
 #define CH_GRID_REQUEST_DATA_MAX_SIZE 102400
@@ -53,7 +55,7 @@ typedef struct ch_grid_process_handle_t
     ch_service_t * service;
 } ch_grid_process_handle_t;
 //////////////////////////////////////////////////////////////////////////
-typedef ch_http_code_t( *ch_request_func_t )(const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * _size);
+typedef ch_http_code_t( *ch_request_func_t )(const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * const _size);
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_cmd_inittab_t
 {
