@@ -8,6 +8,7 @@
 #include "hb_log/hb_log.h"
 
 #include <string.h>
+#include <stdio.h>
 
 //////////////////////////////////////////////////////////////////////////
 typedef struct json_foreach_ud_t
@@ -151,11 +152,8 @@ static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_att
 //////////////////////////////////////////////////////////////////////////
 #define RECORD_ATTRIBUTE_COPY_STRING
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * const _size )
+ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size )
 {
-    HB_UNUSED( _response );
-    HB_UNUSED( _size );
-
     hb_time_t timestamp;
     hb_time( &timestamp );
 
@@ -283,6 +281,9 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
             record->flags |= 1LL << CH_RECORD_ATTRIBUTE_TAGS;
         }
     }
+
+
+    *_size += (hb_size_t)snprintf( _response, _capacity, "{}" );
 
     return CH_HTTP_OK;
 }

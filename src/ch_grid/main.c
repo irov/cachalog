@@ -30,6 +30,10 @@
 #define CH_GRID_REQUEST_DATA_MAX_SIZE 102400
 #endif
 //////////////////////////////////////////////////////////////////////////
+#ifndef CH_GRID_RESPONSE_DATA_MAX_SIZE
+#define CH_GRID_RESPONSE_DATA_MAX_SIZE 1048576
+#endif
+//////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_config_t
 {
     char name[32 + 1];
@@ -54,9 +58,12 @@ typedef struct ch_grid_process_handle_t
 
     hb_thread_handle_t * thread;
     ch_service_t * service;
+
+    char request_data[CH_GRID_REQUEST_DATA_MAX_SIZE];
+    char response_data[CH_GRID_RESPONSE_DATA_MAX_SIZE];
 } ch_grid_process_handle_t;
 //////////////////////////////////////////////////////////////////////////
-typedef ch_http_code_t( *ch_request_func_t )(const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * const _size);
+typedef ch_http_code_t( *ch_request_func_t )(const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size);
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_cmd_inittab_t
 {
@@ -64,8 +71,8 @@ typedef struct ch_grid_cmd_inittab_t
     ch_request_func_t request;
 } ch_grid_cmd_inittab_t;
 //////////////////////////////////////////////////////////////////////////
-extern ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * const _size );
-extern ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * const _size );
+extern ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size );
+extern ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size );
 //////////////////////////////////////////////////////////////////////////
 static ch_grid_cmd_inittab_t grid_cmds[] =
 {
@@ -112,12 +119,10 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     }
 
     ch_grid_process_handle_t * process = (ch_grid_process_handle_t *)_ud;
-    
+
     ch_http_code_t response_code = CH_HTTP_OK;
 
-    hb_size_t response_data_size = 2;
-    char response_data[CH_GRID_REQUEST_DATA_MAX_SIZE] = {'\0'};
-    strcpy( response_data, "{}" );
+    hb_size_t response_data_size = 0;
 
     char token[32 + 1] = {'\0'};
     char cmd_name[8 + 1] = {'\0'};
@@ -140,7 +145,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     }
 
     ch_service_t * service = process->service;
-    
+
     hb_bool_t cmd_found = HB_FALSE;
 
     for( ch_grid_cmd_inittab_t
@@ -154,22 +159,20 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
             continue;
         }
 
-        uint8_t request_pool[HB_DATA_MAX_SIZE];
-
         hb_json_handle_t * json_handle;
-        if( hb_http_get_request_json( _request, request_pool, sizeof( request_pool ), &json_handle ) == HB_FAILURE )
+        if( hb_http_get_request_json( _request, process->request_data, sizeof( process->request_data ), &json_handle ) == HB_FAILURE )
         {
             evhttp_send_reply( _request, HTTP_BADREQUEST, "", output_buffer );
 
             return;
         }
 
-        response_code = (*cmd_inittab->request)(json_handle, service, response_data, &response_data_size);
+        response_code = (*cmd_inittab->request)(json_handle, service, process->response_data, sizeof( process->response_data ), &response_data_size);
 
         cmd_found = HB_TRUE;
 
         break;
-    }    
+    }
 
     if( cmd_found == HB_FALSE )
     {
@@ -178,13 +181,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
-    HB_LOG_MESSAGE_INFO( "grid", "response cmd: %s data: %.*s"
-        , cmd_name
-        , response_data_size
-        , response_data
-    );
-
-    if( evbuffer_add( output_buffer, response_data, response_data_size ) != 0 )
+    if( evbuffer_add( output_buffer, process->response_data, response_data_size ) != 0 )
     {
         evhttp_send_reply( _request, HTTP_INTERNAL, "", output_buffer );
 
@@ -345,7 +342,7 @@ int main( int _argc, char * _argv[] )
     config->max_thread = 16;
     config->max_record = 10000;
     config->max_time = HB_TIME_SECONDS_IN_WEEK;
-    
+
     strcpy( config->grid_uri, "127.0.0.1" );
     config->grid_port = 5555;
 

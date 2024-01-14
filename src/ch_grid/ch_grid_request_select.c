@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_records_filter_t
@@ -52,8 +53,21 @@ typedef struct ch_records_visitor_select_t
     const ch_records_filter_t * filter;
 
     char * response;
+    hb_size_t capacity;
     hb_size_t * size;
 } ch_records_visitor_select_t;
+//////////////////////////////////////////////////////////////////////////
+static void __response_write( ch_records_visitor_select_t * _ud, const char * _format, ... )
+{
+    va_list args;
+    va_start( args, _format );
+
+    int write_count = vsnprintf( _ud->response + *_ud->size, _ud->capacity - *_ud->size, _format, args );
+
+    va_end( args );
+
+    *_ud->size += (hb_size_t)write_count;
+}
 //////////////////////////////////////////////////////////////////////////
 static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t * _record, void * _ud )
 {
@@ -214,119 +228,119 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     if( _index != 0 )
     {
-        *ud->size += sprintf( ud->response + *ud->size, "," );
+        __response_write( ud, "," );
     }
 
-    *ud->size += sprintf( ud->response + *ud->size, "{" );
+    __response_write( ud, "{" );
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_USER_ID ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, "\"user.id\":\"%s\""
+        __response_write( ud, "\"user.id\":\"%s\""
             , _record->user_id
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"level\":%" PRIu32 ""
+        __response_write( ud, ",\"level\":%" PRIu32 ""
             , _record->level
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_SERVICE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"service\":\"%s\""
+        __response_write( ud, ",\"service\":\"%s\""
             , _record->service
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_MESSAGE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"message\":\"%s\""
+        __response_write( ud, ",\"message\":\"%s\""
             , _record->message->text
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_FILE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"file\":\"%s\""
+        __response_write( ud, ",\"file\":\"%s\""
             , _record->file->text
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LINE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"line\":%" PRIu32 ""
+        __response_write( ud, ",\"line\":%" PRIu32 ""
             , _record->line
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TIMESTAMP ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"timestamp\":%" PRIu64 ""
+        __response_write( ud, ",\"timestamp\":%" PRIu64 ""
             , _record->timestamp
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LIVE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"live\":%" PRIu64 ""
+        __response_write( ud, ",\"live\":%" PRIu64 ""
             , _record->live
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.environment\":\"%s\""
+        __response_write( ud, ",\"build.environment\":\"%s\""
             , _record->build_environment
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_RELEASE ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.release\":%s"
+        __response_write( ud, ",\"build.release\":%s"
             , _record->build_release ? "true" : "false"
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_VERSION ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.version\":\"%s\""
+        __response_write( ud, ",\"build.version\":\"%s\""
             , _record->build_version
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_NUMBER ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"build.number\":%" PRIu64 ""
+        __response_write( ud, ",\"build.number\":%" PRIu64 ""
             , _record->build_number
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_DEVICE_MODEL ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"device.model\":\"%s\""
+        __response_write( ud, ",\"device.model\":\"%s\""
             , _record->device_model
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_OS_FAMILY ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"os.family\":\"%s\""
+        __response_write( ud, ",\"os.family\":\"%s\""
             , _record->os_family
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_OS_VERSION ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"os.version\":\"%s\""
+        __response_write( ud, ",\"os.version\":\"%s\""
             , _record->os_version
         );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"attributes\":{" );
+        __response_write( ud, ",\"attributes\":{" );
 
         for( hb_size_t attributes_index = 0; attributes_index != CH_RECORD_ATTRIBUTES_MAX; ++attributes_index )
         {
@@ -339,21 +353,21 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
             if( attributes_index != 0 )
             {
-                *ud->size += sprintf( ud->response + *ud->size, "," );
+                __response_write( ud, "," );
             }
 
-            *ud->size += sprintf( ud->response + *ud->size, "\"%s\":\"%s\""
+            __response_write( ud, "\"%s\":\"%s\""
                 , attribute->name
                 , attribute->value
             );
         }
 
-        *ud->size += sprintf( ud->response + *ud->size, "}" );
+        __response_write( ud, "}" );
     }
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
     {
-        *ud->size += sprintf( ud->response + *ud->size, ",\"tags\":[" );
+        __response_write( ud, ",\"tags\":[" );
 
         for( hb_size_t tags_index = 0; tags_index != CH_RECORD_TAGS_MAX; ++tags_index )
         {
@@ -366,25 +380,22 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
             if( tags_index != 0 )
             {
-                *ud->size += sprintf( ud->response + *ud->size, "," );
+                __response_write( ud, "," );
             }
 
-            *ud->size += sprintf( ud->response + *ud->size, "\"%s\""
+            __response_write( ud, "\"%s\""
                 , tag->value
             );
         }
 
-        *ud->size += sprintf( ud->response + *ud->size, "]" );
+        __response_write( ud, "]" );
     }
 
-    *ud->size += sprintf( ud->response + *ud->size, "}" );
+    __response_write( ud, "}" );
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t * _size )
+ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * _size )
 {
-    HB_UNUSED( _response );
-    HB_UNUSED( _size );
-
     hb_time_t timestamp;
     hb_time( &timestamp );
 
@@ -497,10 +508,6 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
         }
     }
 
-    int response_offset = sprintf( _response, "{\"records\":[" );
-
-    *_size = response_offset;
-
     ch_records_visitor_select_t ud;
     if( json_filter != HB_NULLPTR )
     {
@@ -512,14 +519,17 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     }
 
     ud.response = _response;
+    ud.capacity = _capacity;
     ud.size = _size;
+
+    __response_write( &ud, "{\"records\":[" );
 
     if( ch_service_select_records( _service, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud ) == HB_FAILURE )
     {
         return CH_HTTP_INTERNAL;
     }
 
-    *_size += sprintf( _response + *_size, "]}" );
+    __response_write( &ud, "]}" );
 
     return CH_HTTP_OK;
 }
