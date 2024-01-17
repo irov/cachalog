@@ -24,6 +24,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 
 //////////////////////////////////////////////////////////////////////////
 #ifndef CH_GRID_REQUEST_DATA_MAX_SIZE
