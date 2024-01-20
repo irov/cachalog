@@ -460,7 +460,7 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
 
             for( hb_size_t index = 0; index != attributes_count; ++index )
             {
-                hb_json_handle_t * json_attribute;
+                const hb_json_handle_t * json_attribute;
                 if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_FAILURE )
                 {
                     return CH_HTTP_BADREQUEST;
@@ -492,7 +492,7 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
 
             for( hb_size_t index = 0; index != tags_count; ++index )
             {
-                hb_json_handle_t * json_tag;
+                const hb_json_handle_t * json_tag;
                 if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
                 {
                     return CH_HTTP_BADREQUEST;
