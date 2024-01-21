@@ -150,9 +150,7 @@ static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_att
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-#define RECORD_ATTRIBUTE_COPY_STRING
-//////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size )
+static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_service_t * _service )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
@@ -282,6 +280,54 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
         }
     }
 
+    return CH_HTTP_OK;
+}
+//////////////////////////////////////////////////////////////////////////
+typedef struct __ch_records_visitor_t
+{
+    ch_service_t * service;
+    ch_http_code_t http_code;
+} __ch_records_visitor_t;
+//////////////////////////////////////////////////////////////////////////
+static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t * _value, void * _ud )
+{
+    HB_UNUSED( _index );
+
+    __ch_records_visitor_t * ud = (__ch_records_visitor_t *)_ud;
+
+    ch_http_code_t http_code = __record_insert( _value, ud->service );
+
+    if( http_code != CH_HTTP_OK )
+    {
+        ud->http_code = http_code;
+
+        return HB_FAILURE;
+    }
+
+    return HB_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
+ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size )
+{
+    const hb_json_handle_t * json_records;
+    if( hb_json_object_get_field( _json, "records", &json_records ) == HB_FAILURE )
+    {
+        return CH_HTTP_BADREQUEST;
+    }
+
+    __ch_records_visitor_t ud;
+    ud.service = _service;
+    ud.http_code = CH_HTTP_OK;
+
+    if( hb_json_visit_array( json_records, &__records_visitor, &ud ) == HB_FAILURE )
+    {
+        return CH_HTTP_BADREQUEST;
+    }
+
+    if( ud.http_code != CH_HTTP_OK )
+    {
+        return ud.http_code;
+    }
 
     *_size += (hb_size_t)snprintf( _response, _capacity, "{}" );
 

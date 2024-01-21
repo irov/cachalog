@@ -18,31 +18,38 @@ class Testing(unittest.TestCase):
         for i in range(500):
             rnd = random.randrange(0, 1696072383)
             data_insert = {}
-            data_insert["user.id"] = "user{0}".format(i)
-            data_insert["level"] = 3
-            data_insert["service"] = "test"
-            data_insert["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 50))) + "END1234567890"
-            data_insert["file"] = "test.cpp"
-            data_insert["line"] = 378
-            data_insert["timestamp"] = int(time.time())
-            data_insert["live"] = 2383
-            data_insert["build.environment"] = "dev"
-            data_insert["build.release"] = True
-            data_insert["build.version"] = "1.0.0"
-            data_insert["build.number"] = 12345
+            records = []
+            data_insert["records"] = records
             
-            data_insert["device.model"] = "12345"
-            
-            data_insert["os.family"] = "Android"
-            data_insert["os.version"] = "12"
-            
-            data_insert["attributes"] = {}
-            data_insert["attributes"]["cik_value"] = "0697e656ca1824f5"
-            data_insert["attributes"]["cik_timestamp"] = "1696072383"
-            
-            data_insert["tags"] = []
-            data_insert["tags"] += ["game"]
-            data_insert["tags"] += ["food"]
+            for j in range(random.randrange(1, 10)):
+                record = {}
+                record["user.id"] = "user{0}".format(i)
+                record["level"] = 3
+                record["service"] = "test"
+                record["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 50))) + "END1234567890_" + str(j)
+                record["file"] = "test.cpp"
+                record["line"] = 378
+                record["timestamp"] = int(time.time())
+                record["live"] = 2383
+                record["build.environment"] = "dev"
+                record["build.release"] = True
+                record["build.version"] = "1.0.0"
+                record["build.number"] = 12345
+                
+                record["device.model"] = "12345"
+                
+                record["os.family"] = "Android"
+                record["os.version"] = "12"
+                
+                record["attributes"] = {}
+                record["attributes"]["cik_value"] = "0697e656ca1824f5"
+                record["attributes"]["cik_timestamp"] = "1696072383"
+                
+                record["tags"] = []
+                record["tags"] += ["game"]
+                record["tags"] += ["food"]
+                
+                records.append(record)
             
             print("insert token: {0} data: {1}".format(token, data_insert))
             jresult_insert = cachalot.post(server, "{0}/insert".format(token), **data_insert)
