@@ -170,6 +170,8 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
         response_code = (*cmd_inittab->request)(json_handle, service, process->response_data, sizeof( process->response_data ), &response_data_size);
 
+        hb_json_free( json_handle );
+
         cmd_found = HB_TRUE;
 
         break;
@@ -398,6 +400,8 @@ int main( int _argc, char * _argv[] )
 
         hb_json_copy_field_string( json_handle, "name", config->name, sizeof( config->name ) );
         hb_json_copy_field_string( json_handle, "log_file", config->log_file, sizeof( config->log_file ) );
+
+        hb_json_free( json_handle );
     }
 
     if( strcmp( config->log_file, "" ) != 0 )
