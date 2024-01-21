@@ -8,7 +8,7 @@ INCLUDE(../project_template.cmake)
 INCLUDE(../macro_template.cmake)
 
 if(${CMAKE_C_COMPILER_ID} STREQUAL MSVC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /WX /wd4200 /wd4324")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /WX /wd5105 /wd4200 /wd4324")
   
   add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
 endif()
