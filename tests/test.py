@@ -14,6 +14,7 @@ server = "http://localhost:5555"
 class Testing(unittest.TestCase):
     def __test(self):
         token = "cb57466281a8f398aa63416b8b499978"
+        project = "TESTTMP"
     
         for i in range(500):
             rnd = random.randrange(0, 1696072383)
@@ -52,8 +53,8 @@ class Testing(unittest.TestCase):
                 records.append(record)
             
             print("insert token: {0} data: {1}".format(token, data_insert))
-            jresult_insert = cachalot.post(server, "{0}/insert".format(token), **data_insert)
-            print("response: ", jresult_insert)
+            jresult_insert = cachalot.post(server, "{0}/{1}/insert".format(token, project), **data_insert)
+            print("response: ", json.dumps(jresult_insert))
             
             self.assertIsNotNone(jresult_insert)
         pass
@@ -64,7 +65,7 @@ class Testing(unittest.TestCase):
         data_select["count.limit"] = 500
     
         print("select token: {0} data: {1}".format(token, data_select))
-        jresult_select = cachalot.post(server, "{0}/select".format(token), **data_select)
+        jresult_select = cachalot.post(server, "{0}/{1}/select".format(token, project), **data_select)
         print("response: ", json.dumps(jresult_select))
 
         self.assertIsNotNone(jresult_select)

@@ -64,7 +64,7 @@ typedef struct ch_grid_process_handle_t
     char response_data[CH_GRID_RESPONSE_DATA_MAX_SIZE];
 } ch_grid_process_handle_t;
 //////////////////////////////////////////////////////////////////////////
-typedef ch_http_code_t( *ch_request_func_t )(const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size);
+typedef ch_http_code_t( *ch_request_func_t )(ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size);
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_cmd_inittab_t
 {
@@ -72,8 +72,8 @@ typedef struct ch_grid_cmd_inittab_t
     ch_request_func_t request;
 } ch_grid_cmd_inittab_t;
 //////////////////////////////////////////////////////////////////////////
-extern ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size );
-extern ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size );
+extern ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size );
+extern ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size );
 //////////////////////////////////////////////////////////////////////////
 static ch_grid_cmd_inittab_t grid_cmds[] =
 {
@@ -126,10 +126,11 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     hb_size_t response_data_size = 0;
 
     char token[32 + 1] = {'\0'};
+    char project[CH_RECORD_PROJECT_MAX + 1] = {'\0'};
     char cmd_name[8 + 1] = {'\0'};
-    int32_t count = sscanf( uri, "/%32[^'/']/%8[^'/']", token, cmd_name );
+    int32_t count = sscanf( uri, "/%32[^'/']/%" HB_PP_STRINGIZE(CH_RECORD_PROJECT_MAX) "[^'/']/%8[^'/']", token, project, cmd_name);
 
-    if( count != 2 )
+    if( count != 3 )
     {
         evhttp_send_reply( _request, HTTP_BADREQUEST, "incorrect url", output_buffer );
 
@@ -168,7 +169,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
             return;
         }
 
-        response_code = (*cmd_inittab->request)(json_handle, service, process->response_data, sizeof( process->response_data ), &response_data_size);
+        response_code = (*cmd_inittab->request)(service, project, json_handle, process->response_data, sizeof( process->response_data ), &response_data_size);
 
         hb_json_free( json_handle );
 

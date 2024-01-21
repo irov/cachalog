@@ -9,13 +9,14 @@
 
 #include "hb_utils/hb_ring.h"
 
-#define CH_RECORD_SERVICE_MAX 16
-#define CH_RECORD_USER_ID_MAX 64
-#define CH_RECORD_BUILD_ENVIRONMENT_MAX 16
-#define CH_RECORD_BUILD_VERSION_MAX 32
-#define CH_RECORD_DEVICE_MODEL_MAX 32
-#define CH_RECORD_OS_FAMILY_MAX 16
-#define CH_RECORD_OS_VERSION_MAX 16
+#define CH_RECORD_PROJECT_MAX 7
+#define CH_RECORD_USER_ID_MAX 63
+#define CH_RECORD_SERVICE_MAX 15
+#define CH_RECORD_BUILD_ENVIRONMENT_MAX 15
+#define CH_RECORD_BUILD_VERSION_MAX 31
+#define CH_RECORD_DEVICE_MODEL_MAX 31
+#define CH_RECORD_OS_FAMILY_MAX 15
+#define CH_RECORD_OS_VERSION_MAX 15
 
 #define CH_RECORD_ATTRIBUTES_MAX 20
 #define CH_RECORD_TAGS_MAX 16
@@ -50,14 +51,14 @@ typedef struct ch_record_t
 
     hb_time_t created_timestamp;
     uint64_t id;
-    uint64_t rnd;
 
     uint64_t flags;
 
-    char user_id[CH_RECORD_USER_ID_MAX];
+    char project[CH_RECORD_PROJECT_MAX + 1];
+    char user_id[CH_RECORD_USER_ID_MAX + 1];
     uint32_t level;
 
-    char service[CH_RECORD_SERVICE_MAX];
+    char service[CH_RECORD_SERVICE_MAX + 1];
 
     const ch_message_t * message;
 
@@ -67,15 +68,15 @@ typedef struct ch_record_t
     uint64_t timestamp;
     uint64_t live;
 
-    char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX];
+    char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX + 1];
     hb_bool_t build_release;
-    char build_version[CH_RECORD_BUILD_VERSION_MAX];
+    char build_version[CH_RECORD_BUILD_VERSION_MAX + 1];
     uint64_t build_number;
 
-    char device_model[CH_RECORD_DEVICE_MODEL_MAX];
+    char device_model[CH_RECORD_DEVICE_MODEL_MAX + 1];
 
-    char os_family[CH_RECORD_OS_FAMILY_MAX];
-    char os_version[CH_RECORD_OS_VERSION_MAX];
+    char os_family[CH_RECORD_OS_FAMILY_MAX + 1];
+    char os_version[CH_RECORD_OS_VERSION_MAX + 1];
 
     const ch_attribute_t * attributes[CH_RECORD_ATTRIBUTES_MAX];
     const ch_tag_t * tags[CH_RECORD_TAGS_MAX];

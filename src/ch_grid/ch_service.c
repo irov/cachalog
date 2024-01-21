@@ -46,7 +46,6 @@ static hb_result_t __ch_service_create_records( ch_service_t * _service )
 
     _service->records_mutex = mutex;
     _service->records_enumerator = 0;
-    _service->records_seed = _service->created_timestamp;
     _service->records_count = 0;
     _service->records_max = _service->capacity;
 
@@ -131,19 +130,19 @@ hb_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, hb_
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestamp, uint64_t _id, uint64_t _rnd )
+static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestamp, uint64_t _id )
 {
     hb_time( &_record->created_timestamp );
     _record->created_timestamp = _timestamp;
     _record->id = _id;
-    _record->rnd = _rnd;
     _record->flags = CH_RECORD_ATTRIBUTE_NONE;
+    _record->project[0] = '\0';
     _record->user_id[0] = '\0';
+    _record->level = 0;
     _record->service[0] = '\0';
     _record->message = HB_NULLPTR;
     _record->file = HB_NULLPTR;
-    _record->line = 0;
-    _record->level = 0;
+    _record->line = 0;    
     _record->timestamp = 0;
     _record->live = 0;
     _record->build_environment[0] = '\0';
@@ -251,9 +250,8 @@ hb_result_t ch_service_get_record( ch_service_t * _service, hb_time_t _timestamp
     if( result == HB_SUCCESSFUL )
     {
         uint64_t id = ++_service->records_enumerator;
-        uint64_t rnd = hb_rand64( &_service->records_seed );
 
-        __ch_service_init_record( *_record, _timestamp, id, rnd );
+        __ch_service_init_record( *_record, _timestamp, id );
     }
 
     hb_mutex_unlock( _service->records_mutex );
@@ -584,7 +582,7 @@ hb_result_t ch_service_get_tag( ch_service_t * _service, hb_time_t _timestamp, c
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-hb_result_t ch_service_select_records( ch_service_t * _service, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
+hb_result_t ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
 {
     hb_mutex_lock( _service->records_mutex );
 
@@ -609,6 +607,13 @@ hb_result_t ch_service_select_records( ch_service_t * _service, hb_time_t _times
             }
 
             if( _timestamp - record->created_timestamp < _timeoffset )
+            {
+                record = record->next;
+
+                continue;
+            }
+
+            if( strncmp( record->project, _project, CH_RECORD_PROJECT_MAX ) != 0 )
             {
                 record = record->next;
 

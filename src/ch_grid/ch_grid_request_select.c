@@ -17,10 +17,10 @@ typedef struct ch_records_filter_t
 {
     uint64_t flags;
 
-    char user_id[CH_RECORD_USER_ID_MAX];
+    char user_id[CH_RECORD_USER_ID_MAX + 1];
     uint32_t level;
 
-    char service[CH_RECORD_SERVICE_MAX];
+    char service[CH_RECORD_SERVICE_MAX + 1];
 
     char message[CH_MESSAGE_TEXT_MAX];
 
@@ -30,15 +30,15 @@ typedef struct ch_records_filter_t
     hb_time_t timestamp;
     hb_time_t live;
 
-    char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX];
+    char build_environment[CH_RECORD_BUILD_ENVIRONMENT_MAX + 1];
     hb_bool_t build_release;
-    char build_version[CH_RECORD_BUILD_VERSION_MAX];
+    char build_version[CH_RECORD_BUILD_VERSION_MAX + 1];
     uint64_t build_number;
 
-    char device_model[CH_RECORD_DEVICE_MODEL_MAX];
+    char device_model[CH_RECORD_DEVICE_MODEL_MAX + 1];
 
-    char os_family[CH_RECORD_OS_FAMILY_MAX];
-    char os_version[CH_RECORD_OS_VERSION_MAX];
+    char os_family[CH_RECORD_OS_FAMILY_MAX + 1];
+    char os_version[CH_RECORD_OS_VERSION_MAX + 1];
 
     hb_size_t attributes_count;
     char attributes_name[CH_RECORD_ATTRIBUTES_MAX][CH_ATTRIBUTE_NAME_MAX];
@@ -394,7 +394,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     __response_write( ud, "}" );
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * _size )
+ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * _size )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
@@ -522,9 +522,9 @@ ch_http_code_t ch_grid_request_select( const hb_json_handle_t * _json, ch_servic
     ud.capacity = _capacity;
     ud.size = _size;
 
-    __response_write( &ud, "{\"records\":[" );
+    __response_write( &ud, "{\"project\":\"%s\",\"records\":[", _project );
 
-    if( ch_service_select_records( _service, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud ) == HB_FAILURE )
+    if( ch_service_select_records( _service, _project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud ) == HB_FAILURE )
     {
         return CH_HTTP_INTERNAL;
     }

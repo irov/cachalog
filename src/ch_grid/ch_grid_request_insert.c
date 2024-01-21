@@ -150,7 +150,7 @@ static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_att
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_service_t * _service )
+static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_service_t * _service, const char * _project )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
@@ -160,6 +160,8 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     {
         return CH_HTTP_INTERNAL;
     }
+
+    strncpy( record->project, _project, sizeof( record->project ) );
 
     if( __record_attribute_string( record, CH_RECORD_ATTRIBUTE_USER_ID, _json, "user.id", record->user_id, sizeof( record->user_id ) ) == HB_FALSE )
     {
@@ -286,6 +288,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
 typedef struct __ch_records_visitor_t
 {
     ch_service_t * service;
+    const char * project;
     ch_http_code_t http_code;
 } __ch_records_visitor_t;
 //////////////////////////////////////////////////////////////////////////
@@ -295,7 +298,7 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
 
     __ch_records_visitor_t * ud = (__ch_records_visitor_t *)_ud;
 
-    ch_http_code_t http_code = __record_insert( _value, ud->service );
+    ch_http_code_t http_code = __record_insert( _value, ud->service, ud->project );
 
     if( http_code != CH_HTTP_OK )
     {
@@ -307,7 +310,7 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_service_t * _service, char * _response, hb_size_t _capacity, hb_size_t * const _size )
+ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size )
 {
     const hb_json_handle_t * json_records;
     if( hb_json_object_get_field( _json, "records", &json_records ) == HB_FAILURE )
@@ -317,6 +320,7 @@ ch_http_code_t ch_grid_request_insert( const hb_json_handle_t * _json, ch_servic
 
     __ch_records_visitor_t ud;
     ud.service = _service;
+    ud.project = _project;
     ud.http_code = CH_HTTP_OK;
 
     if( hb_json_visit_array( json_records, &__records_visitor, &ud ) == HB_FAILURE )
