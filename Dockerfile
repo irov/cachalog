@@ -1,4 +1,4 @@
-FROM debian:12 as builder
+FROM debian:10 as builder
 
 ENV DEBUG=True
 
@@ -23,16 +23,18 @@ WORKDIR /app/build/unix/
 RUN bash ./build_dependencies_debug.bash & bash ./build_solution_debug.bash
 
 
-# FROM debian:10
-#
-# LABEL org.opencontainers.image.title = "Cachalot"
-#
-# RUN apt-get update && rm -rf /var/lib/apt/lists/*
-#
-# WORKDIR /app
+FROM debian:10
+
+LABEL org.opencontainers.image.title = "Cachalot"
+
+RUN apt-get update && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
 # COPY ["--from=builder", "/app/bin/cachalot_unix/Unix Makefiles/Debug/ch_grid", "/app"]
-# EXPOSE 5555
-# RUN chmod +X ./ch_grid
-# CMD ["./ch_grid"]
+ARG bin_file="/app/bin/cachalot_unix/Unix Makefiles/Debug/ch_grid"
+COPY --from=builder ${bin_file} /app
+EXPOSE 5555
+RUN chmod +X ./ch_grid
+CMD ["./ch_grid"]
 
 
