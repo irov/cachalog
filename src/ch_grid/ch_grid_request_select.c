@@ -430,7 +430,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
     filter.tags_value[0][0] = '\0';
 
     const hb_json_handle_t * json_filter = HB_NULLPTR;
-    if( hb_json_object_get_field( _json, "filter", &json_filter ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _json, "filter", &json_filter ) == HB_SUCCESSFUL )
     {
         hb_json_copy_field_string( json_filter, "user.id", filter.user_id, sizeof( filter.user_id ) );
         hb_json_copy_field_string( json_filter, "service", filter.service, sizeof( filter.service ) );
@@ -449,7 +449,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
         hb_json_copy_field_string( json_filter, "os.version", filter.os_version, sizeof( filter.os_version ) );
 
         const hb_json_handle_t * json_attributes;
-        if( hb_json_object_get_field( json_filter, "attributes", &json_attributes ) == HB_SUCCESSFUL )
+        if( hb_json_get_field( json_filter, "attributes", &json_attributes ) == HB_SUCCESSFUL )
         {
             if( hb_json_is_array( json_attributes ) == HB_FALSE )
             {
@@ -481,7 +481,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
         }
 
         const hb_json_handle_t * json_tags;
-        if( hb_json_object_get_field( json_filter, "tags", &json_tags ) == HB_SUCCESSFUL )
+        if( hb_json_get_field( json_filter, "tags", &json_tags ) == HB_SUCCESSFUL )
         {
             if( hb_json_is_array( json_tags ) == HB_FALSE )
             {

@@ -81,7 +81,7 @@ static hb_result_t __ch_grid_json_tags_visitor( hb_size_t _index, const hb_json_
 static hb_bool_t __record_attribute_boolean( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, hb_bool_t * _value )
 {
     const hb_json_handle_t * json_field;
-    if( hb_json_object_get_field( _json, _name, &json_field ) == HB_FAILURE )
+    if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
     {
         return HB_FALSE;
     }
@@ -99,7 +99,7 @@ static hb_bool_t __record_attribute_boolean( ch_record_t * _record, ch_record_at
 static hb_bool_t __record_attribute_uint32( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint32_t * _value )
 {
     const hb_json_handle_t * json_field;
-    if( hb_json_object_get_field( _json, _name, &json_field ) == HB_FAILURE )
+    if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
     {
         return HB_FALSE;
     }
@@ -117,7 +117,7 @@ static hb_bool_t __record_attribute_uint32( ch_record_t * _record, ch_record_att
 static hb_bool_t __record_attribute_uint64( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint64_t * _value )
 {
     const hb_json_handle_t * json_field;
-    if( hb_json_object_get_field( _json, _name, &json_field ) == HB_FAILURE )
+    if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
     {
         return HB_FALSE;
     }
@@ -135,7 +135,7 @@ static hb_bool_t __record_attribute_uint64( ch_record_t * _record, ch_record_att
 static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, char * _value, hb_size_t _capacity )
 {
     const hb_json_handle_t * json_field;
-    if( hb_json_object_get_field( _json, _name, &json_field ) == HB_FAILURE )
+    if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
     {
         return HB_FALSE;
     }
@@ -245,7 +245,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_OS_VERSION, _json, "os.version", record->os_version, sizeof( record->os_version ) );
 
     const hb_json_handle_t * json_attributes;
-    if( hb_json_object_get_field( _json, "attributes", &json_attributes ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _json, "attributes", &json_attributes ) == HB_SUCCESSFUL )
     {
         json_foreach_ud_t ud;
         ud.service = _service;
@@ -264,7 +264,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     }
 
     const hb_json_handle_t * json_tags;
-    if( hb_json_object_get_field( _json, "tags", &json_tags ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _json, "tags", &json_tags ) == HB_SUCCESSFUL )
     {
         json_foreach_ud_t ud;
         ud.service = _service;
@@ -313,7 +313,7 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
 ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size )
 {
     const hb_json_handle_t * json_records;
-    if( hb_json_object_get_field( _json, "records", &json_records ) == HB_FAILURE )
+    if( hb_json_get_field( _json, "records", &json_records ) == HB_FAILURE )
     {
         return CH_HTTP_BADREQUEST;
     }
