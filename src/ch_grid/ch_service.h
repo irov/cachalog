@@ -47,6 +47,6 @@ hb_result_t ch_service_get_tag( ch_service_t * _service, hb_time_t _timestamp, c
 
 typedef void(*ch_service_records_visitor_t)(uint64_t _index, const ch_record_t * _record, void * _ud);
 
-hb_result_t ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud );
+void ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud );
 
 #endif

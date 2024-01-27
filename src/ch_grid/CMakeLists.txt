@@ -4,6 +4,7 @@ ADD_FILTER(
 src
     main.c
     
+    ch_config.h
     ch_attribute.h
     ch_tag.h
     ch_record.h

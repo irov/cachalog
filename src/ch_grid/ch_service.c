@@ -582,7 +582,7 @@ hb_result_t ch_service_get_tag( ch_service_t * _service, hb_time_t _timestamp, c
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-hb_result_t ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
+void ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
 {
     hb_mutex_lock( _service->records_mutex );
 
@@ -634,7 +634,5 @@ hb_result_t ch_service_select_records( ch_service_t * _service, const char * _pr
     }
 
     hb_mutex_unlock( _service->records_mutex );
-
-    return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////

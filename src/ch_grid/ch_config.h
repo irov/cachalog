@@ -40,4 +40,17 @@ typedef enum ch_http_code_e
 
 typedef ch_http_code_e ch_http_code_t;
 
+
+#ifndef CH_GRID_REQUEST_DATA_MAX_SIZE
+#define CH_GRID_REQUEST_DATA_MAX_SIZE 102400
+#endif
+
+#ifndef CH_GRID_RESPONSE_DATA_MAX_SIZE
+#define CH_GRID_RESPONSE_DATA_MAX_SIZE 1048576
+#endif
+
+#ifndef CH_GRID_REASON_MAX_SIZE
+#define CH_GRID_REASON_MAX_SIZE 1024
+#endif
+
 #endif

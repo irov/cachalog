@@ -394,7 +394,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     __response_write( ud, "}" );
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * _size )
+ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * _size, char * const _reason )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
@@ -453,6 +453,8 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
         {
             if( hb_json_is_array( json_attributes ) == HB_FALSE )
             {
+                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes is not array" );
+
                 return CH_HTTP_BADREQUEST;
             }
 
@@ -463,16 +465,22 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 const hb_json_handle_t * json_attribute;
                 if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_FAILURE )
                 {
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u] is not object", index );
+
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_copy_field_string( json_attribute, "name", filter.attributes_name[index], sizeof( filter.attributes_name[index] ) ) == HB_FAILURE )
                 {
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].name is not string", index );
+
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_copy_field_string( json_attribute, "value", filter.attributes_value[index], sizeof( filter.attributes_value[index] ) ) == HB_FAILURE )
                 {
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+
                     return CH_HTTP_BADREQUEST;
                 }
             }
@@ -485,6 +493,8 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
         {
             if( hb_json_is_array( json_tags ) == HB_FALSE )
             {
+                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.tags is not array" );
+                
                 return CH_HTTP_BADREQUEST;
             }
 
@@ -495,11 +505,15 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 const hb_json_handle_t * json_tag;
                 if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
                 {
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get element filter.tags[%u]", index );
+
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_copy_string( json_tag, filter.tags_value[index], sizeof( filter.tags_value[index] ), HB_NULLPTR ) == HB_FAILURE )
                 {
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.tags[%u] is not string", index );
+
                     return CH_HTTP_BADREQUEST;
                 }
             }
@@ -524,10 +538,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
 
     __response_write( &ud, "{\"project\":\"%s\",\"records\":[", _project );
 
-    if( ch_service_select_records( _service, _project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud ) == HB_FAILURE )
-    {
-        return CH_HTTP_INTERNAL;
-    }
+    ch_service_select_records( _service, _project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud );
 
     __response_write( &ud, "]}" );
 

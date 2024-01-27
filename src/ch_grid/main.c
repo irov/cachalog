@@ -64,7 +64,7 @@ typedef struct ch_grid_process_handle_t
     char response_data[CH_GRID_RESPONSE_DATA_MAX_SIZE];
 } ch_grid_process_handle_t;
 //////////////////////////////////////////////////////////////////////////
-typedef ch_http_code_t( *ch_request_func_t )(ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size);
+typedef ch_http_code_t( *ch_request_func_t )(ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason);
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_cmd_inittab_t
 {
@@ -72,8 +72,8 @@ typedef struct ch_grid_cmd_inittab_t
     ch_request_func_t request;
 } ch_grid_cmd_inittab_t;
 //////////////////////////////////////////////////////////////////////////
-extern ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size );
-extern ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size );
+extern ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason );
+extern ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason );
 //////////////////////////////////////////////////////////////////////////
 static ch_grid_cmd_inittab_t grid_cmds[] =
 {
@@ -121,6 +121,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     ch_grid_process_handle_t * process = (ch_grid_process_handle_t *)_ud;
 
+    char response_reason[CH_GRID_REASON_MAX_SIZE] = {'\0'};
     ch_http_code_t response_code = CH_HTTP_OK;
 
     hb_size_t response_data_size = 0;
@@ -139,7 +140,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     const ch_grid_config_t * config = process->config;
 
-    if( strcmp( token, config->token ) != 0 )
+    if( strcmp( config->token, token ) != 0 )
     {
         evhttp_send_reply( _request, HTTP_BADREQUEST, "bad token", output_buffer );
 
@@ -164,12 +165,12 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         hb_json_handle_t * json_handle;
         if( hb_http_get_request_json( _request, process->request_data, sizeof( process->request_data ), &json_handle ) == HB_FAILURE )
         {
-            evhttp_send_reply( _request, HTTP_BADREQUEST, "", output_buffer );
+            evhttp_send_reply( _request, HTTP_BADREQUEST, "invalid get request json", output_buffer );
 
             return;
         }
 
-        response_code = (*cmd_inittab->request)(service, project, json_handle, process->response_data, sizeof( process->response_data ), &response_data_size);
+        response_code = (*cmd_inittab->request)(service, project, json_handle, process->response_data, sizeof( process->response_data ), &response_data_size, response_reason);
 
         hb_json_free( json_handle );
 
@@ -180,14 +181,16 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     if( cmd_found == HB_FALSE )
     {
-        evhttp_send_reply( _request, HTTP_BADMETHOD, "", output_buffer );
+        snprintf( response_reason, CH_GRID_REASON_MAX_SIZE, "invalid found cmd '%s'", cmd_name );
+
+        evhttp_send_reply( _request, HTTP_BADMETHOD, response_reason, output_buffer );
 
         return;
     }
 
     if( evbuffer_add( output_buffer, process->response_data, response_data_size ) != 0 )
     {
-        evhttp_send_reply( _request, HTTP_INTERNAL, "", output_buffer );
+        evhttp_send_reply( _request, HTTP_INTERNAL, "invalid add response to buffer", output_buffer );
 
         return;
     }
@@ -199,7 +202,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "POST" );
     evhttp_add_header( output_headers, "Content-Type", "application/json" );
 
-    evhttp_send_reply( _request, response_code, "", output_buffer );
+    evhttp_send_reply( _request, response_code, response_reason, output_buffer );
 }
 //////////////////////////////////////////////////////////////////////////
 static void __ch_ev_accept_socket( ch_grid_process_handle_t * _handle, struct evhttp * _server )
