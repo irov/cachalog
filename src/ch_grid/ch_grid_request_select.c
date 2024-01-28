@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -56,6 +57,8 @@ typedef struct ch_records_visitor_select_t
     ch_records_filter_t filter;
 
     hb_json_string_t search;
+    hb_bool_t search_is_integer;
+    uint64_t search_integer;
 
     hb_size_t tags_count;
     hb_json_string_t tags[CH_RECORD_TAGS_MAX];
@@ -219,6 +222,26 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
         {
             return HB_TRUE;
         }
+    }
+
+    return HB_FALSE;
+}
+//////////////////////////////////////////////////////////////////////////
+static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, const ch_record_t * _record )
+{
+    if( _search == _record->line )
+    {
+        return HB_TRUE;
+    }
+
+    if( _search == _record->timestamp )
+    {
+        return HB_TRUE;
+    }
+
+    if( _search == _record->build_number )
+    {
+        return HB_TRUE;
     }
 
     return HB_FALSE;
@@ -424,6 +447,14 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         if( __ch_service_records_filter_search( ud->search, _record ) == HB_FALSE )
         {
             return;
+        }
+
+        if( ud->search_is_integer == HB_TRUE )
+        {
+            if( __ch_service_records_filter_search_integer( ud->search_integer, _record ) == HB_FALSE )
+            {
+                return;
+            }
         }
     }
 
@@ -654,6 +685,40 @@ static void __select_filter_get_field_uint64( ch_records_visitor_select_t * _ud,
     }
 }
 //////////////////////////////////////////////////////////////////////////
+static hb_bool_t __strntoull( const char * _str, size_t _size, uint64_t * const _value )
+{
+    char buffer[20 + 1];
+
+    size_t sz = _size;
+    const char * it = _str;
+
+    for( ; it && sz && *it == ' '; it++, sz-- )
+        ;
+
+    for( ; it && sz && *(it + sz - 1) == ' '; sz-- )
+        ;
+
+    if( sz == 0 || sz >= sizeof( buffer ) )
+    {
+        return HB_FALSE;
+    }
+
+    memcpy( buffer, it, sz );
+    buffer[sz] = '\0';
+
+    char * end;
+    unsigned long long ret = strtoull( buffer, &end, 10 );
+
+    if( buffer == end )
+    {
+        return HB_FALSE;
+    }
+
+    *_value = (uint64_t)ret;
+
+    return HB_TRUE;
+}
+//////////////////////////////////////////////////////////////////////////
 ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * _size, char * const _reason )
 {
     hb_time_t timestamp;
@@ -777,11 +842,15 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
 
     ud.search.value = HB_NULLPTR;
     ud.search.size = 0;
+    ud.search_is_integer = HB_FALSE;
+    ud.search_integer = 0;
 
     const hb_json_handle_t * json_search;
     if( hb_json_get_field( _json, "search", &json_search ) == HB_SUCCESSFUL )
     {
         hb_json_to_string( json_search, &ud.search );
+
+        ud.search_is_integer = __strntoull( ud.search.value, ud.search.size, &ud.search_integer );
     }
 
     ud.tags_count = 0;
