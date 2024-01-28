@@ -12,6 +12,7 @@
 #define CH_RECORD_PROJECT_MAX 7
 #define CH_RECORD_USER_ID_MAX 63
 #define CH_RECORD_SERVICE_MAX 15
+#define CH_RECORD_THREAD_MAX 15
 #define CH_RECORD_BUILD_ENVIRONMENT_MAX 15
 #define CH_RECORD_BUILD_VERSION_MAX 31
 #define CH_RECORD_DEVICE_MODEL_MAX 31
@@ -24,9 +25,11 @@
 typedef enum ch_record_attributes_flag_e
 {
     CH_RECORD_ATTRIBUTE_NONE,
+    CH_RECORD_ATTRIBUTE_PROJECT,
     CH_RECORD_ATTRIBUTE_USER_ID,
     CH_RECORD_ATTRIBUTE_LEVEL,
     CH_RECORD_ATTRIBUTE_SERVICE,
+    CH_RECORD_ATTRIBUTE_THREAD,
     CH_RECORD_ATTRIBUTE_MESSAGE,
     CH_RECORD_ATTRIBUTE_FILE,
     CH_RECORD_ATTRIBUTE_LINE,
@@ -43,7 +46,8 @@ typedef enum ch_record_attributes_flag_e
     CH_RECORD_ATTRIBUTE_TAGS,
 } ch_record_attributes_flag_e;
 
-#define CH_HAS_RECORD_FLAG(FLAG, TAG) (FLAG & (1LL << TAG))
+#define CH_GET_RECORD_FLAG(TAG) (1LL << TAG)
+#define CH_HAS_RECORD_FLAG(FLAG, TAG) (FLAG & CH_GET_RECORD_FLAG(TAG))
 
 typedef struct ch_record_t
 {
@@ -59,6 +63,7 @@ typedef struct ch_record_t
     uint32_t level;
 
     char service[CH_RECORD_SERVICE_MAX + 1];
+    char thread[CH_RECORD_THREAD_MAX + 1];
 
     const ch_message_t * message;
 

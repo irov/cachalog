@@ -192,20 +192,20 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     }
 
     __record_attribute_string( record, CH_RECORD_ATTRIBUTE_SERVICE, _json, "service", record->service, sizeof( record->service ) );
+    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_THREAD, _json, "thread", record->thread, sizeof( record->thread ) );
 
-    const char * message_value;
-    hb_size_t message_length;
-    if( hb_json_get_field_string( _json, "message", &message_value, &message_length ) == HB_SUCCESSFUL )
+    hb_json_string_t message_string;
+    if( hb_json_get_field_string( _json, "message", &message_string ) == HB_SUCCESSFUL )
     {
-        if( message_length >= CH_MESSAGE_TEXT_MAX )
+        if( message_string.size >= CH_MESSAGE_TEXT_MAX )
         {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get message length %zu >= %zu", message_length, CH_MESSAGE_TEXT_MAX );
+            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get message length %zu >= %zu", message_string.size, CH_MESSAGE_TEXT_MAX );
 
             return CH_HTTP_BADREQUEST;
         }
 
         ch_message_t * message;
-        if( ch_service_get_message( _service, timestamp, message_value, message_length, &message ) == HB_FAILURE )
+        if( ch_service_get_message( _service, timestamp, message_string.value, message_string.size, &message ) == HB_FAILURE )
         {
             snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get message" );
 
@@ -223,19 +223,18 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_BADREQUEST;
     }
 
-    const char * file_value;
-    hb_size_t file_length;
-    if( hb_json_get_field_string( _json, "file", &file_value, &file_length ) == HB_SUCCESSFUL )
+    hb_json_string_t file_string;
+    if( hb_json_get_field_string( _json, "file", &file_string ) == HB_SUCCESSFUL )
     {
-        if( file_length > HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) )
+        if( file_string.size > HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) )
         {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file length %zu > %zu", file_length, HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) );
+            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file length %zu > %zu", file_string.size, HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) );
 
             return CH_HTTP_BADREQUEST;
         }
 
         ch_message_t * file;
-        if( ch_service_get_message( _service, timestamp, file_value, file_length, &file ) == HB_FAILURE )
+        if( ch_service_get_message( _service, timestamp, file_string.value, file_string.size, &file ) == HB_FAILURE )
         {
             snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file" );
 
