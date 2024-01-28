@@ -47,9 +47,6 @@ typedef struct ch_records_filter_t
     hb_size_t attributes_count;
     hb_json_string_t attributes_name[CH_RECORD_ATTRIBUTES_MAX];
     hb_json_string_t attributes_value[CH_RECORD_ATTRIBUTES_MAX];
-
-    hb_size_t tags_count;
-    hb_json_string_t tags_value[CH_RECORD_TAGS_MAX];
 } ch_records_filter_t;
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_records_visitor_select_t
@@ -400,42 +397,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             hb_json_string_t filter_attribute_value = filter->attributes_value[attributes_index];
 
             if( __ch_service_records_filter_arguments( filter_attribute_name, filter_attribute_value, _record ) == HB_FALSE )
-            {
-                return;
-            }
-        }
-
-        for( hb_size_t tags_index = 0; tags_index != filter->tags_count; ++tags_index )
-        {
-            hb_json_string_t filter_tag_value = filter->tags_value[tags_index];
-
-            if( __ch_service_records_filter_tag( filter_tag_value, _record ) == HB_FALSE )
-            {
-                return;
-            }
-
-            hb_bool_t found = HB_FALSE;
-
-            for( hb_size_t record_tags_index = 0; record_tags_index != CH_RECORD_TAGS_MAX; ++record_tags_index )
-            {
-                const ch_tag_t * tag = _record->tags[record_tags_index];
-
-                if( tag == HB_NULLPTR )
-                {
-                    continue;
-                }
-
-                if( __hb_json_string_strstr( filter_tag_value, tag->value ) == HB_NULLPTR )
-                {
-                    continue;
-                }
-
-                found = HB_TRUE;
-
-                break;
-            }
-
-            if( found == HB_FALSE )
             {
                 return;
             }
@@ -828,7 +789,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                     return CH_HTTP_BADREQUEST;
                 }
 
-                if( hb_json_to_string( json_tag, &ud.filter.tags_value[index] ) == HB_FAILURE )
+                if( hb_json_to_string( json_tag, &ud.tags[index] ) == HB_FAILURE )
                 {
                     snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.tags[%u] is not string", index );
 
@@ -836,7 +797,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 }
             }
 
-            ud.filter.tags_count = tags_count;
+            ud.tags_count = tags_count;
         }
     }
 
@@ -882,7 +843,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "tags[%u] is not string", index );
 
                 return CH_HTTP_BADREQUEST;
-            }            
+            }
         }
 
         ud.tags_count = tags_count;
