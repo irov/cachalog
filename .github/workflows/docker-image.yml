@@ -23,11 +23,12 @@ jobs:
         echo "${{ secrets.SSH_KEY }}" > key.pem
         chmod 600 key.pem
 
-    - name: te
-      run: cat key.pem
-      
     - name: Export image
-      run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load"
+      run: docker image save -o cachalot_dev.tar cachalot:dev
+    - name: send
+      run: rsync -i key.pem cachalot_dev.tar cicd-github@devdebugger.com:/home/cicd-github/builds
+    - name: send2
+      run: ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load /home/cicd-github/builds/cachalot_dev.tar"
 
     - name: Update docker container
       run: ssh -i key.pem -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
