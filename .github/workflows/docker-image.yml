@@ -20,11 +20,14 @@ jobs:
     - name: Create key.pem
       run: |
         set -eu
-        echo "${{ secrets.SSH_KEY }}" > key.pem
+        echo "$SSH_KEY" > key.pem
         chmod 600 key.pem
-        
+
+    - name: te
+      run: cat key.pem
+      
     - name: Export image
       run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load"
 
     - name: Update docker container
-      run: ssh -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh -i key.pem -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
