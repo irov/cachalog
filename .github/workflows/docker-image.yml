@@ -1,0 +1,30 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile -t cachalot:dev
+
+    - name: Create key.pem
+      run: |
+        set -eu
+        echo "${{ secrets.SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+        
+    - name: Export image
+      run: docker image save cachalot:dev | gzip | ssh -C cicd-github "sudo docker load"
+
+    - name: Update docker container
+      run: ssh -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
