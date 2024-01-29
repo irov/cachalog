@@ -11,24 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # - uses: actions/checkout@v3
-    # - name: Build the Docker image
-    #   run: docker build . --file Dockerfile -t cachalot:dev
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile -t cachalot:dev
 
     - name: Create key.pem
       run: |
         set -eu
-        echo "${{secrets.SSH_KEY}}" > key.pem
-        chmod 600 key.pem
+        mkdir -p "$HOME/.ssh"
+        echo "${{secrets.SSH_KEY}}" > "$HOME/.ssh/key.pem"
+        chmod 400 "$HOME/.ssh/key.pem"
 
-    - name: Test ssh
-      run: ssh -i key.pem cicd-github@devdebugger.com -C "ls ./"
-    # - name: Export image
-    #   run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load"
-    - name: send
-      run: rsync -i key.pem cachalot_dev.tar cicd-github@devdebugger.com:/home/cicd-github/builds
-    - name: send2
-      run: ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load /home/cicd-github/builds/cachalot_dev.tar"
+    - name: Create config
+      run: |
+        cat >> $HOME/.ssh/config <<END
+          Host staging
+            HostName devdebugger.com
+            User cicd-github
+            IdentityFile $HOME/.ssh/key.pem
+            StrictHostKeyChecking no
+
+    - name: Export image
+      run: docker image save cachalot:dev | ssh staging "sudo docker load"
+    # - name: send
+    #   run: rsync -i key.pem cachalot_dev.tar cicd-github@devdebugger.com:/home/cicd-github/builds
+    # - name: send2
+    #   run: ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load /home/cicd-github/builds/cachalot_dev.tar"
 
     - name: Update docker container
-      run: ssh -i key.pem -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh staging -c "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
