@@ -32,7 +32,7 @@ jobs:
             StrictHostKeyChecking no
 
     - name: Export image
-      run: docker image save cachalot:dev | ssh staging "sudo docker load"
+      run: docker image save cachalot:dev | ssh staging -c "sudo docker load"
     # - name: send
     #   run: rsync -i key.pem cachalot_dev.tar cicd-github@devdebugger.com:/home/cicd-github/builds
     # - name: send2
