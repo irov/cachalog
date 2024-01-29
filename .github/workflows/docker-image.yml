@@ -24,7 +24,7 @@ jobs:
         chmod 600 key.pem
         
     - name: Export image
-      run: docker image save cachalot:dev | ssh -C cicd-github@devdebugger.com "sudo docker load"
+      run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "docker load"
 
     - name: Update docker container
       run: ssh -c cicd-github@devdebugger.com "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
