@@ -18,9 +18,11 @@ jobs:
     - name: Create key.pem
       run: |
         set -eu
-        echo ${{secrets.SSH_KEY}} > key.pem
+        echo "${{secrets.SSH_KEY}}" > key.pem
         chmod 600 key.pem
-        
+
+    - name: Test ssh
+      run: ssh -i key.pem cicd-github@devdebugger.com -C "ls ./"
     # - name: Export image
     #   run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load"
     - name: send
