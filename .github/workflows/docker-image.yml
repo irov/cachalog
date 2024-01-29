@@ -20,7 +20,7 @@ jobs:
     - name: Create key.pem
       run: |
         set -eu
-        echo "$SSH_KEY" > key.pem
+        echo "${{ secrets.SSH_KEY }}" > key.pem
         chmod 600 key.pem
 
     - name: te
