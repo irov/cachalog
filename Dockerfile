@@ -38,7 +38,7 @@ RUN ["cp", "/app/tmp/Unix Makefiles/Debug/ch_grid", "/app"]
 RUN echo '{ "max_thread": 8, "max_record": 50, "max_time": 30, "grid_uri": "0.0.0.0", "grid_port": 5555, "token": "adgnp9283hrn;agd", "name": "docker_ch_grid" }' >> /app/docker_config.json
 EXPOSE 5555
 RUN chmod +X ./ch_grid
-ENTRYPOINT ["/app/ch_grid", "--config", "/app/docker_config.json"]
-# CMD ["--config", "/app/docker_config.json"]
+# ENTRYPOINT ["/app/ch_grid"]
+CMD ["/app/ch_grid", "--config", "/app/docker_config.json"]
 
 
