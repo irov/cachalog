@@ -18,10 +18,8 @@ jobs:
     - name: Create key.pem
       run: |
         set -eu
-        echo ${{SSH_KEY}} > key.pem
+        echo ${{secrets.SSH_KEY}} > key.pem
         chmod 600 key.pem
-      env:
-        SSH_KEY: ${{secrets.SSH_KEY}}
         
     # - name: Export image
     #   run: docker image save cachalot:dev | ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load"
