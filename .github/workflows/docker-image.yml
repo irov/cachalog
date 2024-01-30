@@ -37,4 +37,5 @@ jobs:
       run: docker image save cachalot:dev | ssh staging -C "sudo docker load"
 
     - name: Update docker container
-      run: ssh staging -C "sudo docker stop cachalot-dev && sudo docker run --rm -d --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker stop cachalot-dev"
+    - run: ssh staging -C "sudo docker run --rm -d --name cachalot-dev -p 5555:5555 cachalot:dev"
