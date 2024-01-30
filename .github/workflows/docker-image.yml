@@ -33,10 +33,6 @@ jobs:
 
     - name: Export image
       run: docker image save cachalot:dev | ssh staging -C "sudo docker load"
-    # - name: send
-    #   run: rsync -i key.pem cachalot_dev.tar cicd-github@devdebugger.com:/home/cicd-github/builds
-    # - name: send2
-    #   run: ssh -i key.pem -C cicd-github@devdebugger.com "sudo docker load /home/cicd-github/builds/cachalot_dev.tar"
 
     - name: Update docker container
-      run: ssh staging -C "sudo docker stop cachalot-dev && sudo docker run --rm --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker stop cachalot-dev && sudo docker run --rm -d --name cachalot-dev -p 5555:5555 cachalot:dev"
