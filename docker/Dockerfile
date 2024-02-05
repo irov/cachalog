@@ -24,11 +24,16 @@ RUN bash ./build_dependencies_debug.bash
 RUN bash ./build_solution_debug.bash
 
 
-FROM debian:10
+# FROM debian:10
+FROM bitnami/minideb:buster
 
-LABEL org.opencontainers.image.title = "Cachalot"
+LABEL org.opencontainers.image.title = "Cachalot" \
+  org.opencontainers.image.licenses="MIT" \
+  org.opencontainers.image.source="https://github.com/irov/cachalot" \
+  org.opencontainers.image.version="0.0.0-dev"
 
-RUN apt-get update && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && rm -rf /var/lib/apt/lists/*
+# RUN install_packages tree
 
 WORKDIR /app
 COPY --from=builder /app/bin/cachalot_unix/ /app/tmp
