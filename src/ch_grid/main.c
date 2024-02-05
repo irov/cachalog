@@ -315,6 +315,66 @@ static void __event_fatal( int err )
     );
 }
 //////////////////////////////////////////////////////////////////////////
+static void __ch_grid_config_u16( int _argc, char * _argv[], const char * _key, uint16_t * const _value, uint16_t _default )
+{
+    int64_t arg = -1;
+    hb_getopti( _argc, _argv, _key, &arg );
+
+    if( arg != -1 )
+    {
+        *_value = (uint16_t)arg;
+    }
+    else
+    {
+        *_value = _default;
+    }
+}
+//////////////////////////////////////////////////////////////////////////
+static void __ch_grid_config_u32( int _argc, char * _argv[], const char * _key, uint32_t * const _value, uint32_t _default )
+{
+    int64_t arg = -1;
+    hb_getopti( _argc, _argv, _key, &arg );
+
+    if( arg != -1 )
+    {
+        *_value = (uint32_t)arg;
+    }
+    else
+    {
+        *_value = _default;
+    }
+}
+//////////////////////////////////////////////////////////////////////////
+static void __ch_grid_config_u64( int _argc, char * _argv[], const char * _key, uint64_t * const _value, uint64_t _default )
+{
+    int64_t arg = -1;
+    hb_getopti( _argc, _argv, _key, &arg );
+
+    if( arg != -1 )
+    {
+        *_value = (uint32_t)arg;
+    }
+    else
+    {
+        *_value = _default;
+    }
+}
+//////////////////////////////////////////////////////////////////////////
+static void __ch_grid_config_string( int _argc, char * _argv[], const char * _key, char * _value, hb_size_t _capacity, const char * _default )
+{
+    const char * arg = HB_NULLPTR;
+    hb_getopt( _argc, _argv, _key, &arg );
+
+    if( arg != HB_NULLPTR )
+    {
+        strncpy( _value, arg, _capacity );
+    }
+    else
+    {
+        strncpy( _value, _default, _capacity );
+    }
+}
+//////////////////////////////////////////////////////////////////////////
 int main( int _argc, char * _argv[] )
 {
     HB_UNUSED( _argc );
@@ -346,24 +406,23 @@ int main( int _argc, char * _argv[] )
 
     ch_grid_config_t * config = HB_NEW( ch_grid_config_t );
 
-    config->max_thread = 16;
-    config->max_record = 10000;
-    config->max_time = HB_TIME_SECONDS_IN_WEEK;
-
-    strcpy( config->grid_uri, "127.0.0.1" );
-    config->grid_port = 5555;
-
-    strcpy( config->token, "" );
-
-    strcpy( config->name, "hb" );
+    __ch_grid_config_u32( _argc, _argv, "--max_thread", &config->max_thread, 16 );
+    __ch_grid_config_u32( _argc, _argv, "--max_record", &config->max_record, 10000 );
+    __ch_grid_config_u64( _argc, _argv, "--max_time", &config->max_time, HB_TIME_SECONDS_IN_WEEK );
+    __ch_grid_config_string( _argc, _argv, "--grid_uri", config->grid_uri, sizeof( config->grid_uri ), "127.0.0.1" );
+    __ch_grid_config_u16( _argc, _argv, "--grid_port", &config->grid_port, 5555 );
+    __ch_grid_config_string( _argc, _argv, "--token", config->token, sizeof( config->token ), "" );
+    __ch_grid_config_string( _argc, _argv, "--name", config->name, sizeof( config->name ), "hb" );
+    
+    char default_log_file[HB_MAX_PATH];
 
 #ifndef HB_DEBUG
-    strcpy( config->log_file, "" );
+    strcpy( default_log_file, "" );
 #else
     hb_date_t date;
     hb_date( &date );
 
-    sprintf( config->log_file, "log_grid_%u_%u_%u_%u_%u_%u.log"
+    sprintf( default_log_file, "log_grid_%u_%u_%u_%u_%u_%u.log"
         , date.year
         , date.mon
         , date.mday
@@ -371,6 +430,8 @@ int main( int _argc, char * _argv[] )
         , date.min
         , date.sec );
 #endif
+
+    __ch_grid_config_string( _argc, _argv, "--log_file", config->log_file, sizeof( config->log_file ), default_log_file );
 
     if( config_file != HB_NULLPTR )
     {
