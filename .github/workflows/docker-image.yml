@@ -12,10 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-    - env:
-        CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
+    env:
+      CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
 
+    steps:    
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: docker build . --file ./docker/Dockerfile -t cachalot:dev
