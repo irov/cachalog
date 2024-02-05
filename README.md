@@ -9,7 +9,6 @@ docker build <options> -t cachalot:dev .
 ```bash
 // create container
 docker run --name cachalot-dev -p 5555:5555 cachalot:dev
-
 // stop container
 docker stop cachalot-dev
 
@@ -45,6 +44,8 @@ pv (pipe viewer) - сторонняя утилита
 - `--name` - Имя контейнера.
 - `--entrypoint` - Команда, которая будет запускаться при создании контейнера (по умолчанию *ch_grid*).
 - `-p [host_port]:[container_port]` - Порт, к которому будет слушать контейнер.
+- `-e [VAR=VALUE]` or `--env [VAR=VALUE]` - Переменные окружения для контейнера:
+    * `CACHALOT__TOKEN` - токен для CACHALOT
 
 rsync:
 - a: Режим архива, который сохраняет разрешения файлов, времена изменения, рекурсивность и другие атрибуты файлов.
