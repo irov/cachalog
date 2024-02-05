@@ -7,7 +7,7 @@
 #include "hb_memory/hb_memory.h"
 
 #include "hb_log/hb_log.h"
-#include "hb_log_console/hb_log_console.h"
+#include "hb_log_stderr/hb_log_stderr.h"
 #include "hb_log_file/hb_log_file.h"
 
 #include "hb_json/hb_json.h"
@@ -324,7 +324,7 @@ int main( int _argc, char * _argv[] )
 
     hb_log_initialize();
 
-    if( hb_log_console_initialize() == HB_FAILURE )
+    if( hb_log_stderr_initialize() == HB_FAILURE )
     {
         return EXIT_FAILURE;
     }
@@ -508,7 +508,7 @@ int main( int _argc, char * _argv[] )
     WSACleanup();
 #endif
 
-    hb_log_console_finalize();
+    hb_log_stderr_finalize();
 
 #ifdef HB_DEBUG
     hb_log_file_finalize();
