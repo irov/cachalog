@@ -1,4 +1,3 @@
-# FROM debian:10 as builder
 FROM debian:10 as builder
 
 ENV DEBUG=True
