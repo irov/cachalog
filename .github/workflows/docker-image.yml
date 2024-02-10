@@ -41,8 +41,11 @@ jobs:
 
     - name: Stop container and save logs
       run: ssh staging -C "sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log"
+      continue-on-error: true
     - name: Remove old image
       run: ssh staging -C "sudo docker rmi cachalot:dev"
+      continue-on-error: true
+      
     - name: RUN DOCKER WITH DEFAULT_TOKEN
       if: ${{env.CACHALOT__TOKEN == ''}}
       run: ssh staging -C "sudo docker run -d --name cachalot-dev -p 5555:5555 cachalot:dev"
