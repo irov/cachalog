@@ -42,8 +42,9 @@ jobs:
     - name: Stop container and save logs
       run: ssh staging -C "sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log"
       continue-on-error: true
-    - name: Remove old image
-      run: ssh staging -C "sudo docker rmi cachalot:dev"
+
+    - name: Remove untagged image
+      run: ssh staging -C "docker images -f “dangling=true” -q"
       continue-on-error: true
       
     - name: RUN DOCKER WITH DEFAULT_TOKEN
