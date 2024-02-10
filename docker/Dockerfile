@@ -38,6 +38,7 @@ LABEL org.opencontainers.image.title = "Cachalot" \
 WORKDIR /app
 COPY --from=builder /app/bin/cachalot_unix/ /app/tmp
 RUN ["cp", "/app/tmp/Unix Makefiles/Debug/ch_grid", "/app"]
+RUN ["rm", "/app/tmp/*"]
 
 RUN echo '{ "max_thread": 8, "max_record": 10000, "max_time": 604800, "grid_uri": "0.0.0.0", "grid_port": 5555, "log_file": "/dev/stdout", "name": "docker_ch_grid" }' >> /app/docker_config.json
 
