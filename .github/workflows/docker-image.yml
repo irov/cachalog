@@ -39,11 +39,13 @@ jobs:
     - name: Export image
       run: docker image save cachalot:dev | ssh staging -C "sudo docker load"
 
-    - name: Update docker container
-      run: ssh staging -C "sudo docker stop cachalot-dev"
+    - name: Stop container and save logs
+      run: ssh staging -C "sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log"
+    - name: Remove old image
+      run: ssh staging -C "sudo docker rmi cachalot:dev"
     - name: RUN DOCKER WITH DEFAULT_TOKEN
       if: ${{env.CACHALOT__TOKEN == ''}}
-      run: ssh staging -C "sudo docker run --rm -d --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev -p 5555:5555 cachalot:dev"
     - name: RUN DOCKER
       if: ${{env.CACHALOT__TOKEN != ''}}
-      run: ssh staging -C "sudo docker run --rm -d --name cachalot-dev --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
