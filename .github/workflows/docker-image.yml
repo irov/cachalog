@@ -44,7 +44,7 @@ jobs:
       continue-on-error: true
 
     - name: Remove untagged image
-      run: ssh staging -C "docker rm cachalot-dev && docker images -f “dangling=true” -q"
+      run: ssh staging -C "sudo docker rm cachalot-dev && docker images -f “dangling=true” -q"
       continue-on-error: true
       
     - name: RUN DOCKER WITH DEFAULT_TOKEN
