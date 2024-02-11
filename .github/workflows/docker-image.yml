@@ -12,7 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
+    env:
+      CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
+
+    steps:    
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: docker build . --file ./docker/Dockerfile -t cachalot:dev
@@ -36,6 +39,17 @@ jobs:
     - name: Export image
       run: docker image save cachalot:dev | ssh staging -C "sudo docker load"
 
-    - name: Update docker container
-      run: ssh staging -C "sudo docker stop cachalot-dev"
-    - run: ssh staging -C "sudo docker run --rm -d --name cachalot-dev -p 5555:5555 cachalot:dev"
+    - name: Stop container and save logs
+      run: ssh staging -C "sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log"
+      continue-on-error: true
+
+    - name: Remove untagged image
+      run: ssh staging -C "docker images -f “dangling=true” -q"
+      continue-on-error: true
+      
+    - name: RUN DOCKER WITH DEFAULT_TOKEN
+      if: ${{env.CACHALOT__TOKEN == ''}}
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev -p 5555:5555 cachalot:dev"
+    - name: RUN DOCKER
+      if: ${{env.CACHALOT__TOKEN != ''}}
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
