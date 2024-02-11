@@ -1,7 +1,7 @@
 {
-  "max_thread": 16,
-  "max_record": 50,
-  "max_time": 30,
+  "max_thread": 8,
+  "max_record": 10000,
+  "max_time": 604800,
     
   "grid_uri": "::1",
   "grid_port": 5555,

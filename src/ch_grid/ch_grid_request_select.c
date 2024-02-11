@@ -178,7 +178,7 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
         return HB_TRUE;
     }
 
-    for( ch_attribute_t
+    for( const ch_attribute_t
         * const * it_attribute = _record->attributes + 0,
         * const * it_attribute_end = _record->attributes + CH_RECORD_ATTRIBUTES_MAX;
         it_attribute != it_attribute_end;
@@ -208,7 +208,7 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
         }        
     }
 
-    for( ch_tag_t
+    for( const ch_tag_t
         * const * it_tag = _record->tags + 0,
         * const * it_tag_end = _record->tags + CH_RECORD_TAGS_MAX;
         it_tag != it_tag_end;
@@ -252,7 +252,7 @@ static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, c
 //////////////////////////////////////////////////////////////////////////
 static hb_bool_t __ch_service_records_filter_tag( hb_json_string_t _tag, const ch_record_t * _record )
 {
-    for( ch_tag_t
+    for( const ch_tag_t
         * const * it_tag = _record->tags + 0,
         * const * it_tag_end = _record->tags + CH_RECORD_TAGS_MAX;
         it_tag != it_tag_end;
