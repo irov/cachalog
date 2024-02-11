@@ -47,11 +47,42 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
         return HB_FAILURE;
     }
 
-    if( hb_json_copy_string( _value, attribute->value, sizeof( attribute->value ), HB_NULLPTR ) == HB_FAILURE )
-    {
-        snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute value copy" );
+    hb_json_type_e value_type = hb_json_get_type( _value );
 
-        return HB_FAILURE;
+    switch( value_type )
+    {
+    case e_hb_json_false:
+        {
+            attribute->value_type = CH_ATTRIBUTE_TYPE_BOOLEAN;
+            attribute->value_boolean = HB_FALSE;
+        } break;
+    case e_hb_json_true:
+        {
+            attribute->value_type = CH_ATTRIBUTE_TYPE_BOOLEAN;
+            attribute->value_boolean = HB_TRUE;
+        } break;
+    case e_hb_json_integer:
+        {
+            attribute->value_type = CH_ATTRIBUTE_TYPE_INTEGER;
+            
+            if( hb_json_to_int64( _value, &attribute->value_integer ) == HB_FAILURE )
+            {
+                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute value integer" );
+
+                return HB_FAILURE;
+            }
+        } break;
+    case e_hb_json_string:
+        {
+            attribute->value_type = CH_ATTRIBUTE_TYPE_STRING;
+
+            if( hb_json_copy_string( _value, attribute->value_string, sizeof( attribute->value_string ), HB_NULLPTR ) == HB_FAILURE )
+            {
+                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute value copy" );
+
+                return HB_FAILURE;
+            }
+        } break;
     }
 
     ud->record->attributes[_index] = attribute;
@@ -276,6 +307,13 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     const hb_json_handle_t * json_attributes;
     if( hb_json_get_field( _json, "attributes", &json_attributes ) == HB_SUCCESSFUL )
     {
+        if( hb_json_is_object( json_attributes ) == HB_FALSE )
+        {
+            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid attributes is not object" );
+
+            return CH_HTTP_BADREQUEST;
+        }
+
         json_foreach_ud_t ud;
         ud.service = _service;
         ud.record = record;
@@ -288,7 +326,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
             return CH_HTTP_BADREQUEST;
         }
 
-        if( hb_json_get_array_size( json_attributes ) != 0 )
+        if( hb_json_get_object_size( json_attributes ) != 0 )
         {
             record->flags |= 1LL << CH_RECORD_ATTRIBUTE_ATTRIBUTES;
         }
@@ -297,6 +335,13 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
     const hb_json_handle_t * json_tags;
     if( hb_json_get_field( _json, "tags", &json_tags ) == HB_SUCCESSFUL )
     {
+        if( hb_json_is_array( json_tags ) == HB_FALSE )
+        {
+            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid tags is not array" );
+
+            return CH_HTTP_BADREQUEST;
+        }
+
         json_foreach_ud_t ud;
         ud.service = _service;
         ud.record = record;
@@ -309,7 +354,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
             return CH_HTTP_BADREQUEST;
         }
 
-        if( hb_json_get_object_size( json_tags ) != 0 )
+        if( hb_json_get_array_size( json_tags ) != 0 )
         {
             record->flags |= 1LL << CH_RECORD_ATTRIBUTE_TAGS;
         }

@@ -196,10 +196,16 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
             return HB_TRUE;
         }
 
-        if( __hb_json_string_strstr( _search, attribute->value ) != HB_NULLPTR )
+        switch( attribute->value_type )
         {
-            return HB_TRUE;
-        }
+        case CH_ATTRIBUTE_TYPE_STRING:
+            {
+                if( __hb_json_string_strstr( _search, attribute->value_string ) != HB_NULLPTR )
+                {
+                    return HB_TRUE;
+                }
+            }break;
+        }        
     }
 
     for( ch_tag_t
@@ -281,8 +287,9 @@ static hb_bool_t __ch_service_records_filter_arguments( hb_json_string_t _name, 
             break;
         }
 
-        if( __hb_json_string_strstr( _name, attribute->name ) == HB_NULLPTR ||
-            __hb_json_string_strstr( _value, attribute->value ) == HB_NULLPTR )
+        if( attribute->value_type != CH_ATTRIBUTE_TYPE_STRING ||
+            __hb_json_string_strstr( _name, attribute->name ) == HB_NULLPTR ||
+            __hb_json_string_strstr( _value, attribute->value_string ) == HB_NULLPTR )
         {
             continue;
         }
@@ -576,10 +583,30 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
                 __response_write( ud, "," );
             }
 
-            __response_write( ud, "\"%s\":\"%s\""
-                , attribute->name
-                , attribute->value
-            );
+            switch( attribute->value_type )
+            {
+            case CH_ATTRIBUTE_TYPE_BOOLEAN:
+                {
+                    __response_write( ud, "\"%s\":%s"
+                        , attribute->name
+                        , attribute->value_boolean == HB_TRUE ? "true" : "false"
+                    );
+                } break;
+            case CH_ATTRIBUTE_TYPE_INTEGER:
+                {
+                    __response_write( ud, "\"%s\":%" PRIi64 ""
+                        , attribute->name
+                        , attribute->value_integer
+                    );
+                } break;
+            case CH_ATTRIBUTE_TYPE_STRING:
+                {
+                    __response_write( ud, "\"%s\":\"%s\""
+                        , attribute->name
+                        , attribute->value_string
+                    );
+                } break;
+            }            
         }
 
         __response_write( ud, "}" );

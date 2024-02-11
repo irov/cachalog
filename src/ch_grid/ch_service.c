@@ -387,7 +387,9 @@ static void __ch_service_init_attribute( ch_attribute_t * _attribute, hb_time_t 
     _attribute->created_timestamp = _timestamp;
 
     _attribute->name[0] = '\0';
-    _attribute->value[0] = '\0';
+    _attribute->value_boolean = HB_FALSE;
+    _attribute->value_integer = 0L;
+    _attribute->value_string[0] = '\0';
 }
 //////////////////////////////////////////////////////////////////////////
 static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, hb_time_t _timestamp, ch_attribute_t ** _attribute )

@@ -9,6 +9,13 @@
 #define CH_ATTRIBUTE_NAME_MAX 32
 #define CH_ATTRIBUTE_VALUE_MAX 128
 
+typedef enum ch_attribute_type_t
+{
+    CH_ATTRIBUTE_TYPE_BOOLEAN,
+    CH_ATTRIBUTE_TYPE_INTEGER,
+    CH_ATTRIBUTE_TYPE_STRING
+} ch_attribute_type_t;
+
 typedef struct ch_attribute_t
 {
     HB_RING_DECLARE( ch_attribute_t );
@@ -16,8 +23,15 @@ typedef struct ch_attribute_t
     hb_time_t created_timestamp;
 
     char name[CH_ATTRIBUTE_NAME_MAX];
-    char value[CH_ATTRIBUTE_VALUE_MAX];
+    
+    ch_attribute_type_t value_type;
 
+    union 
+    {
+        hb_bool_t value_boolean;
+        int64_t value_integer;
+        char value_string[CH_ATTRIBUTE_VALUE_MAX];
+    };
 } ch_attribute_t;
 
 #endif
