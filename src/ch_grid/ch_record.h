@@ -9,7 +9,12 @@
 
 #include "hb_utils/hb_ring.h"
 
-#define CH_RECORD_PROJECT_MAX 7
+#define CH_TOKEN_SIZE 32
+#define CH_PROJECT_MINLEN 3
+#define CH_PROJECT_MAXLEN 7
+#define CH_CMD_MAXLEN 16
+
+
 #define CH_RECORD_USER_ID_MAX 63
 #define CH_RECORD_SERVICE_MAX 15
 #define CH_RECORD_THREAD_MAX 15
@@ -25,14 +30,11 @@
 typedef enum ch_record_attributes_flag_e
 {
     CH_RECORD_ATTRIBUTE_NONE,
-    CH_RECORD_ATTRIBUTE_PROJECT,
     CH_RECORD_ATTRIBUTE_USER_ID,
     CH_RECORD_ATTRIBUTE_LEVEL,
     CH_RECORD_ATTRIBUTE_SERVICE,
     CH_RECORD_ATTRIBUTE_THREAD,
     CH_RECORD_ATTRIBUTE_MESSAGE,
-    CH_RECORD_ATTRIBUTE_FILE,
-    CH_RECORD_ATTRIBUTE_LINE,
     CH_RECORD_ATTRIBUTE_TIMESTAMP,
     CH_RECORD_ATTRIBUTE_LIVE,
     CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT,
@@ -58,7 +60,7 @@ typedef struct ch_record_t
 
     uint64_t flags;
 
-    char project[CH_RECORD_PROJECT_MAX + 1];
+    char project[CH_PROJECT_MAXLEN + 1];
     char user_id[CH_RECORD_USER_ID_MAX + 1];
     uint32_t level;
 
@@ -66,9 +68,6 @@ typedef struct ch_record_t
     char thread[CH_RECORD_THREAD_MAX + 1];
 
     const ch_message_t * message;
-
-    const ch_message_t * file;
-    uint32_t line;
 
     uint64_t timestamp;
     uint64_t live;

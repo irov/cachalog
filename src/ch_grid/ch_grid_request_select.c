@@ -14,11 +14,27 @@
 #include <stdarg.h>
 
 //////////////////////////////////////////////////////////////////////////
+typedef enum ch_records_filter_attribute_value_type_e
+{
+    e_records_attributes_boolean,
+    e_records_attributes_integer,
+    e_records_attributes_string
+} ch_records_filter_attribute_value_type_e;
+//////////////////////////////////////////////////////////////////////////
+typedef struct ch_records_filter_attribute_t
+{
+    ch_records_filter_attribute_value_type_e type;
+
+    hb_json_string_t name;
+
+    hb_bool_t value_boolean;
+    uint64_t value_integer;
+    hb_json_string_t value_string;
+} ch_records_filter_attribute_t;
+//////////////////////////////////////////////////////////////////////////
 typedef struct ch_records_filter_t
 {
     uint64_t flags;
-
-    hb_json_string_t project;
 
     hb_json_string_t user_id;
     uint32_t level;
@@ -45,8 +61,8 @@ typedef struct ch_records_filter_t
     hb_json_string_t os_version;
 
     hb_size_t attributes_count;
-    hb_json_string_t attributes_name[CH_RECORD_ATTRIBUTES_MAX];
-    hb_json_string_t attributes_value[CH_RECORD_ATTRIBUTES_MAX];
+
+    ch_records_filter_attribute_t attributes[CH_RECORD_ATTRIBUTES_MAX];
 } ch_records_filter_t;
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_records_visitor_select_t
@@ -148,11 +164,6 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
         return HB_TRUE;
     }
 
-    if( __hb_json_string_strstr( _search, _record->file->text ) != HB_NULLPTR )
-    {
-        return HB_TRUE;
-    }
-
     if( __hb_json_string_strstr( _search, _record->build_environment ) != HB_NULLPTR )
     {
         return HB_TRUE;
@@ -205,7 +216,7 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
                     return HB_TRUE;
                 }
             }break;
-        }        
+        }
     }
 
     for( const ch_tag_t
@@ -232,12 +243,12 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
 //////////////////////////////////////////////////////////////////////////
 static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, const ch_record_t * _record )
 {
-    if( _search == _record->line )
+    if( _search == _record->timestamp )
     {
         return HB_TRUE;
     }
 
-    if( _search == _record->timestamp )
+    if( _search == _record->live )
     {
         return HB_TRUE;
     }
@@ -245,6 +256,31 @@ static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, c
     if( _search == _record->build_number )
     {
         return HB_TRUE;
+    }
+
+    for( const ch_attribute_t
+        * const * it_attribute = _record->attributes + 0,
+        * const * it_attribute_end = _record->attributes + CH_RECORD_ATTRIBUTES_MAX;
+        it_attribute != it_attribute_end;
+        ++it_attribute )
+    {
+        const ch_attribute_t * attribute = *it_attribute;
+
+        if( attribute == HB_NULLPTR )
+        {
+            break;
+        }
+
+        switch( attribute->value_type )
+        {
+        case CH_ATTRIBUTE_TYPE_INTEGER:
+            {
+                if( _search == attribute->value_integer )
+                {
+                    return HB_TRUE;
+                }
+            }break;
+        }
     }
 
     return HB_FALSE;
@@ -276,7 +312,7 @@ static hb_bool_t __ch_service_records_filter_tag( hb_json_string_t _tag, const c
     return HB_FALSE;
 }
 //////////////////////////////////////////////////////////////////////////
-static hb_bool_t __ch_service_records_filter_arguments( hb_json_string_t _name, hb_json_string_t _value, const ch_record_t * _record )
+static hb_bool_t __ch_service_records_filter_string_arguments( hb_json_string_t _name, hb_json_string_t _value, const ch_record_t * _record )
 {
     for( hb_size_t record_attributes_index = 0; record_attributes_index != CH_RECORD_ATTRIBUTES_MAX; ++record_attributes_index )
     {
@@ -313,11 +349,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             return;
         }
 
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_PROJECT ) && __hb_json_string_strstr( filter->project, _record->project ) == HB_NULLPTR )
-        {
-            return;
-        }
-
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_USER_ID ) && __hb_json_string_strstr( filter->user_id, _record->user_id ) == HB_NULLPTR )
         {
             return;
@@ -339,16 +370,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
 
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_MESSAGE ) && __hb_json_string_strstr( filter->message, _record->message->text ) == HB_NULLPTR )
-        {
-            return;
-        }
-
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_FILE ) && __hb_json_string_strstr( filter->file, _record->file->text ) == HB_NULLPTR )
-        {
-            return;
-        }
-
-        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_LINE ) && filter->line != _record->line )
         {
             return;
         }
@@ -400,12 +421,14 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
         for( hb_size_t attributes_index = 0; attributes_index != filter->attributes_count; ++attributes_index )
         {
-            hb_json_string_t filter_attribute_name = filter->attributes_name[attributes_index];
-            hb_json_string_t filter_attribute_value = filter->attributes_value[attributes_index];
+            const ch_records_filter_attribute_t * attribute = filter->attributes + attributes_index;
 
-            if( __ch_service_records_filter_arguments( filter_attribute_name, filter_attribute_value, _record ) == HB_FALSE )
+            if( attribute->type == e_records_attributes_string )
             {
-                return;
+                if( __ch_service_records_filter_string_arguments( attribute->name, attribute->value_string, _record ) == HB_FALSE )
+                {
+                    return;
+                }
             }
         }
     }
@@ -446,13 +469,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     __response_write( ud, "{" );
 
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_PROJECT ) )
-    {
-        __response_write( ud, "\"project\":\"%s\""
-            , _record->project
-        );
-    }
-
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_USER_ID ) )
     {
         __response_write( ud, "\"user.id\":\"%s\""
@@ -485,20 +501,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     {
         __response_write( ud, ",\"message\":\"%s\""
             , _record->message->text
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_FILE ) )
-    {
-        __response_write( ud, ",\"file\":\"%s\""
-            , _record->file->text
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LINE ) )
-    {
-        __response_write( ud, ",\"line\":%" PRIu32 ""
-            , _record->line
         );
     }
 
@@ -594,7 +596,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
                 } break;
             case CH_ATTRIBUTE_TYPE_INTEGER:
                 {
-                    __response_write( ud, "\"%s\":%" PRIi64 ""
+                    __response_write( ud, "\"%s\":%" PRIu64 ""
                         , attribute->name
                         , attribute->value_integer
                     );
@@ -606,7 +608,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
                         , attribute->value_string
                     );
                 } break;
-            }            
+            }
         }
 
         __response_write( ud, "}" );
@@ -733,12 +735,9 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
             return CH_HTTP_BADREQUEST;
         }
 
-        __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_PROJECT, json_filter, "project", &ud.filter.project );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_USER_ID, json_filter, "user.id", &ud.filter.user_id );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_SERVICE, json_filter, "service", &ud.filter.service );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_MESSAGE, json_filter, "message", &ud.filter.message );
-        __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_FILE, json_filter, "file", &ud.filter.file );
-        __select_filter_get_field_uint32( &ud, CH_RECORD_ATTRIBUTE_LINE, json_filter, "line", &ud.filter.line );
         __select_filter_get_field_uint32( &ud, CH_RECORD_ATTRIBUTE_LEVEL, json_filter, "level", &ud.filter.level );
         __select_filter_get_field_uint64( &ud, CH_RECORD_ATTRIBUTE_TIMESTAMP, json_filter, "timestamp", &ud.filter.timestamp );
         __select_filter_get_field_uint64( &ud, CH_RECORD_ATTRIBUTE_LIVE, json_filter, "live", &ud.filter.live );
@@ -774,18 +773,60 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                     return CH_HTTP_BADREQUEST;
                 }
 
-                if( hb_json_get_field_string( json_attribute, "name", &ud.filter.attributes_name[index] ) == HB_FAILURE )
+                if( hb_json_get_field_string( json_attribute, "name", &ud.filter.attributes[index].name ) == HB_FAILURE )
                 {
                     snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].name is not string", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
 
-                if( hb_json_get_field_string( json_attribute, "value", &ud.filter.attributes_value[index] ) == HB_FAILURE )
+                const hb_json_handle_t * attribute_value;
+                if( hb_json_get_field( json_attribute, "value", &attribute_value ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not found", index );
 
                     return CH_HTTP_BADREQUEST;
+                }
+
+                ch_records_filter_attribute_t * filter_attribute = ud.filter.attributes + index;
+
+                hb_json_type_e attribute_value_type = hb_json_get_type( attribute_value );
+
+                switch( attribute_value_type )
+                {
+                case e_hb_json_false:
+                    {
+                        filter_attribute->value_boolean = HB_FALSE;
+                    }break;
+                case e_hb_json_true:
+                    {
+                        filter_attribute->value_boolean = HB_TRUE;
+                    }break;
+                case e_hb_json_integer:
+                    {
+                        if( hb_json_get_field_uint64( json_attribute, "value", &filter_attribute->value_integer ) == HB_FAILURE )
+                        {
+                            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+
+                            return CH_HTTP_BADREQUEST;
+                        }
+                    }break;
+                case e_hb_json_string:
+                    {
+                        if( hb_json_get_field_string( json_attribute, "value", &filter_attribute->value_string ) == HB_FAILURE )
+                        {
+                            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+
+                            return CH_HTTP_BADREQUEST;
+                        }
+                    }break;
+                default:
+                    {
+                        snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not boolean, integer or string", index );
+
+                        return CH_HTTP_BADREQUEST;
+                        break;
+                    }
                 }
             }
 

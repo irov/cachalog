@@ -127,10 +127,10 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     hb_size_t response_data_size = 0;
 
-    char token[32 + 1] = {'\0'};
-    char project[CH_RECORD_PROJECT_MAX + 1] = {'\0'};
-    char cmd_name[8 + 1] = {'\0'};
-    int32_t count = sscanf( uri, "/%32[^'/']/%" HB_PP_STRINGIZE(CH_RECORD_PROJECT_MAX) "[^'/']/%8[^'/']", token, project, cmd_name);
+    char token[CH_TOKEN_SIZE + 1 + 1] = {'\0'};
+    char project[CH_PROJECT_MAXLEN + 1 + 1] = {'\0'};
+    char cmd_name[CH_CMD_MAXLEN + 1 + 1] = {'\0'};
+    int32_t count = sscanf( uri, "/%" HB_PP_STRINGIZE( CH_TOKEN_SIZE ) "[^'/']/%" HB_PP_STRINGIZE( CH_PROJECT_MAXLEN ) "[^'/']/%" HB_PP_STRINGIZE( CH_CMD_MAXLEN ) "[^ '/']", token, project, cmd_name );
 
     if( count != 3 )
     {
@@ -141,9 +141,23 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     const ch_grid_config_t * config = process->config;
 
-    if( strcmp( config->token, token ) != 0 )
+    if( strlen( token ) != CH_TOKEN_SIZE || strcmp( config->token, token ) != 0 )
     {
         evhttp_send_reply( _request, HTTP_BADREQUEST, "bad token", output_buffer );
+
+        return;
+    }
+
+    if( strlen( project ) < CH_PROJECT_MINLEN || strlen( project ) > CH_PROJECT_MAXLEN )
+    {
+        evhttp_send_reply( _request, HTTP_BADREQUEST, "bad project", output_buffer );
+
+        return;
+    }
+
+    if( strlen( cmd_name ) < 1 || strlen( cmd_name ) > CH_CMD_MAXLEN )
+    {
+        evhttp_send_reply( _request, HTTP_BADREQUEST, "bad cmd", output_buffer );
 
         return;
     }
@@ -429,6 +443,8 @@ int main( int _argc, char * _argv[] )
 
     if( err != 0 )
     {
+        HB_LOG_MESSAGE_CRITICAL( "grid", "invalid initialize winsock" );
+
         return EXIT_FAILURE;
     }
 #endif
@@ -445,7 +461,7 @@ int main( int _argc, char * _argv[] )
     __ch_grid_config_u16( _argc, _argv, "CACHALOT__GRID_PORT", "--grid_port", &config->grid_port, 5555 );
     __ch_grid_config_string( _argc, _argv, "CACHALOT__TOKEN", "--token", config->token, sizeof( config->token ), "" );
     __ch_grid_config_string( _argc, _argv, "CACHALOT__NAME", "--name", config->name, sizeof( config->name ), "hb" );
-    
+
     char default_log_file[HB_MAX_PATH];
 
 #ifndef HB_DEBUG
@@ -471,6 +487,10 @@ int main( int _argc, char * _argv[] )
         hb_size_t config_size;
         if( hb_file_read_text( config_file, config_buffer, HB_DATA_MAX_SIZE, &config_size ) == HB_FAILURE )
         {
+            HB_LOG_MESSAGE_CRITICAL( "grid", "config file '%s' invalid read"
+                , config_file
+            );
+
             return EXIT_FAILURE;
         }
 
@@ -501,6 +521,16 @@ int main( int _argc, char * _argv[] )
         hb_json_free( json_handle );
     }
 
+    if( strlen( config->token ) != CH_TOKEN_SIZE )
+    {
+        HB_LOG_MESSAGE_CRITICAL( "grid", "invalid token size '%s' [%d]"
+            , config->token
+            , CH_TOKEN_SIZE
+        );
+
+        return EXIT_FAILURE;
+    }
+
     if( strcmp( config->log_file, "" ) != 0 )
     {
         if( hb_log_file_initialize( config->log_file ) == HB_FAILURE )
@@ -527,6 +557,10 @@ int main( int _argc, char * _argv[] )
     ch_service_t * service;
     if( ch_service_create( &service, config->max_record, config->max_time ) == HB_FAILURE )
     {
+        HB_LOG_MESSAGE_ERROR( "grid", "grid '%s' invalid create service"
+            , config->name
+        );
+
         return EXIT_FAILURE;
     }
 
@@ -537,6 +571,10 @@ int main( int _argc, char * _argv[] )
     hb_mutex_handle_t * mutex_ev_socket;
     if( hb_mutex_create( &mutex_ev_socket ) == HB_FAILURE )
     {
+        HB_LOG_MESSAGE_ERROR( "grid", "grid '%s' invalid create mutex"
+            , config->name
+        );
+
         return EXIT_FAILURE;
     }
 

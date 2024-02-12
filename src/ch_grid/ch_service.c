@@ -142,8 +142,6 @@ static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestam
     _record->service[0] = '\0';
     _record->thread[0] = '\0';
     _record->message = HB_NULLPTR;
-    _record->file = HB_NULLPTR;
-    _record->line = 0;    
     _record->timestamp = 0;
     _record->live = 0;
     _record->build_environment[0] = '\0';
@@ -388,7 +386,7 @@ static void __ch_service_init_attribute( ch_attribute_t * _attribute, hb_time_t 
 
     _attribute->name[0] = '\0';
     _attribute->value_boolean = HB_FALSE;
-    _attribute->value_integer = 0L;
+    _attribute->value_integer = 0UL;
     _attribute->value_string[0] = '\0';
 }
 //////////////////////////////////////////////////////////////////////////
@@ -616,7 +614,7 @@ void ch_service_select_records( ch_service_t * _service, const char * _project, 
                 continue;
             }
 
-            if( strncmp( record->project, _project, CH_RECORD_PROJECT_MAX ) != 0 )
+            if( strncmp( record->project, _project, CH_PROJECT_MAXLEN ) != 0 )
             {
                 record = record->next;
 

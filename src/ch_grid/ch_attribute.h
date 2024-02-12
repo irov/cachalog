@@ -6,8 +6,8 @@
 #include "hb_utils/hb_time.h"
 #include "hb_utils/hb_ring.h"
 
-#define CH_ATTRIBUTE_NAME_MAX 32
-#define CH_ATTRIBUTE_VALUE_MAX 128
+#define CH_ATTRIBUTE_NAME_MAX 31
+#define CH_ATTRIBUTE_VALUE_MAX 127
 
 typedef enum ch_attribute_type_t
 {
@@ -22,15 +22,15 @@ typedef struct ch_attribute_t
 
     hb_time_t created_timestamp;
 
-    char name[CH_ATTRIBUTE_NAME_MAX];
+    char name[CH_ATTRIBUTE_NAME_MAX + 1];
     
     ch_attribute_type_t value_type;
 
     union 
     {
         hb_bool_t value_boolean;
-        int64_t value_integer;
-        char value_string[CH_ATTRIBUTE_VALUE_MAX];
+        uint64_t value_integer;
+        char value_string[CH_ATTRIBUTE_VALUE_MAX + 1];
     };
 } ch_attribute_t;
 

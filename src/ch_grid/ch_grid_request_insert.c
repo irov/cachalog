@@ -65,9 +65,11 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
         {
             attribute->value_type = CH_ATTRIBUTE_TYPE_INTEGER;
             
-            if( hb_json_to_int64( _value, &attribute->value_integer ) == HB_FAILURE )
+            if( hb_json_to_uint64( _value, &attribute->value_integer ) == HB_FAILURE )
             {
-                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute value integer" );
+                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute '%s' value integer"
+                    , attribute->name
+                );
 
                 return HB_FAILURE;
             }
@@ -78,10 +80,21 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
 
             if( hb_json_copy_string( _value, attribute->value_string, sizeof( attribute->value_string ), HB_NULLPTR ) == HB_FAILURE )
             {
-                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute value copy" );
+                snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute '%s' value string"
+                    , attribute->name
+                );
 
                 return HB_FAILURE;
             }
+        } break;
+    default:
+        {
+            snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute '%s' value type %d"
+                , attribute->name
+                , value_type 
+            );
+
+            return HB_FAILURE;
         } break;
     }
 
@@ -215,6 +228,13 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_BADREQUEST;
     }
 
+    if( record->user_id[0] == '\0' )
+    {
+        snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get required user.id empty" );
+
+        return CH_HTTP_BADREQUEST;
+    }
+
     if( __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LEVEL, _json, "level", &record->level ) == HB_FALSE )
     {
         snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get required level" );
@@ -253,43 +273,6 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
 
         return CH_HTTP_BADREQUEST;
     }
-
-    hb_json_string_t file_string;
-    if( hb_json_get_field_string( _json, "file", &file_string ) == HB_SUCCESSFUL )
-    {
-        if( file_string.size > HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) )
-        {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file length %zu > %zu", file_string.size, HB_MIN( 1024, CH_MESSAGE_TEXT_MAX ) );
-
-            return CH_HTTP_BADREQUEST;
-        }
-
-        ch_message_t * file;
-        if( ch_service_get_message( _service, timestamp, file_string.value, file_string.size, &file ) == HB_FAILURE )
-        {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file" );
-
-            return CH_HTTP_INTERNAL;
-        }
-
-        record->flags |= 1LL << CH_RECORD_ATTRIBUTE_FILE;
-
-        record->file = file;
-    }
-    else
-    {
-        ch_message_t * file;
-        if( ch_service_get_message_empty( _service, timestamp, &file ) == HB_FAILURE )
-        {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get file [empty]" );
-
-            return CH_HTTP_INTERNAL;
-        }
-
-        record->file = file;
-    }
-
-    __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LINE, _json, "line", &record->line );
 
     __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_TIMESTAMP, _json, "timestamp", &record->timestamp );
     __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_LIVE, _json, "live", &record->live );
