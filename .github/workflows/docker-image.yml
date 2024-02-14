@@ -49,7 +49,7 @@ jobs:
       
     - name: RUN DOCKER WITH DEFAULT_TOKEN
       if: ${{env.CACHALOT__TOKEN == ''}}
-      run: ssh staging -C "sudo docker run -d --name cachalot-dev -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev --restart always -p 5555:5555 cachalot:dev"
     - name: RUN DOCKER
       if: ${{env.CACHALOT__TOKEN != ''}}
-      run: ssh staging -C "sudo docker run -d --name cachalot-dev --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
+      run: ssh staging -C "sudo docker run -d --name cachalot-dev --restart always --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
