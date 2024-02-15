@@ -10,7 +10,8 @@
 
 typedef struct ch_tag_t
 {
-    HB_RING_DECLARE( ch_tag_t );
+    HB_RING_DECLARE( base, ch_tag_t );
+    HB_RING_DECLARE( record, ch_tag_t );
 
     hb_time_t created_timestamp;
 

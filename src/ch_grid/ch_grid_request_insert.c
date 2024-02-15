@@ -28,7 +28,7 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
     if( _index >= CH_RECORD_ATTRIBUTES_MAX )
     {
         snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attributes count %zu >= %zu", _index, CH_RECORD_ATTRIBUTES_MAX );
-    
+
         return HB_FAILURE;
     }
 
@@ -64,7 +64,7 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
     case e_hb_json_integer:
         {
             attribute->value_type = CH_ATTRIBUTE_TYPE_INTEGER;
-            
+
             if( hb_json_to_uint64( _value, &attribute->value_integer ) == HB_FAILURE )
             {
                 snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute '%s' value integer"
@@ -91,14 +91,23 @@ static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb
         {
             snprintf( ud->reason, CH_GRID_REASON_MAX_SIZE, "invalid get attribute '%s' value type %d"
                 , attribute->name
-                , value_type 
+                , value_type
             );
 
             return HB_FAILURE;
         } break;
     }
 
-    ud->record->attributes[_index] = attribute;
+    if( ud->record->attributes == HB_NULLPTR )
+    {
+        HB_RING_INIT( record, attribute );
+
+        ud->record->attributes = attribute;
+    }
+    else
+    {
+        HB_RING_PUSH_BACK( record, ud->record->attributes, attribute );
+    }
 
     return HB_SUCCESSFUL;
 }
@@ -129,7 +138,16 @@ static hb_result_t __ch_grid_json_tags_visitor( hb_size_t _index, const hb_json_
         return HB_FAILURE;
     }
 
-    ud->record->tags[_index] = tag;
+    if( ud->record->tags == HB_NULLPTR )
+    {
+        HB_RING_INIT( record, tag );
+
+        ud->record->tags = tag;
+    }
+    else
+    {
+        HB_RING_PUSH_BACK( record, ud->record->tags, tag );
+    }
 
     return HB_SUCCESSFUL;
 }
@@ -305,7 +323,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         if( hb_json_visit_object( json_attributes, &__ch_grid_json_attributes_visitor, &ud ) == HB_FAILURE )
         {
             strncpy( _reason, ud.reason, CH_GRID_REASON_MAX_SIZE );
-            
+
             return CH_HTTP_BADREQUEST;
         }
 

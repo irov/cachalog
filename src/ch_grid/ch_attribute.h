@@ -18,7 +18,8 @@ typedef enum ch_attribute_type_t
 
 typedef struct ch_attribute_t
 {
-    HB_RING_DECLARE( ch_attribute_t );
+    HB_RING_DECLARE( base, ch_attribute_t );
+    HB_RING_DECLARE( record, ch_attribute_t );
 
     hb_time_t created_timestamp;
 

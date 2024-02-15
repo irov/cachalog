@@ -11,7 +11,7 @@
 
 typedef struct ch_message_t
 {
-    HB_RING_DECLARE( ch_message_t );
+    HB_RING_DECLARE( base, ch_message_t );
 
     hb_time_t created_timestamp;
     hb_size_t capacity;

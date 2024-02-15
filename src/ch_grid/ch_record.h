@@ -49,11 +49,11 @@ typedef enum ch_record_attributes_flag_e
 } ch_record_attributes_flag_e;
 
 #define CH_GET_RECORD_FLAG(TAG) (1LL << TAG)
-#define CH_HAS_RECORD_FLAG(FLAG, TAG) (FLAG & CH_GET_RECORD_FLAG(TAG))
+#define CH_HAS_RECORD_FLAG(FLAG, TAG) ((FLAG & CH_GET_RECORD_FLAG(TAG)) == CH_GET_RECORD_FLAG(TAG))
 
 typedef struct ch_record_t
 {
-    HB_RING_DECLARE( ch_record_t );
+    HB_RING_DECLARE( base, ch_record_t );
 
     hb_time_t created_timestamp;
     uint64_t id;
@@ -82,8 +82,8 @@ typedef struct ch_record_t
     char os_family[CH_RECORD_OS_FAMILY_MAX + 1];
     char os_version[CH_RECORD_OS_VERSION_MAX + 1];
 
-    const ch_attribute_t * attributes[CH_RECORD_ATTRIBUTES_MAX];
-    const ch_tag_t * tags[CH_RECORD_TAGS_MAX];
+    ch_attribute_t * attributes;
+    ch_tag_t * tags;
 } ch_record_t;
 
 #endif

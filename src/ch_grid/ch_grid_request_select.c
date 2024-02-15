@@ -189,52 +189,36 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
         return HB_TRUE;
     }
 
-    for( const ch_attribute_t
-        * const * it_attribute = _record->attributes + 0,
-        * const * it_attribute_end = _record->attributes + CH_RECORD_ATTRIBUTES_MAX;
-        it_attribute != it_attribute_end;
-        ++it_attribute )
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) )
     {
-        const ch_attribute_t * attribute = *it_attribute;
-
-        if( attribute == HB_NULLPTR )
+        HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
         {
-            break;
-        }
-
-        if( __hb_json_string_strstr( _search, attribute->name ) != HB_NULLPTR )
-        {
-            return HB_TRUE;
-        }
-
-        switch( attribute->value_type )
-        {
-        case CH_ATTRIBUTE_TYPE_STRING:
+            if( __hb_json_string_strstr( _search, attribute->name ) != HB_NULLPTR )
             {
-                if( __hb_json_string_strstr( _search, attribute->value_string ) != HB_NULLPTR )
+                return HB_TRUE;
+            }
+
+            switch( attribute->value_type )
+            {
+            case CH_ATTRIBUTE_TYPE_STRING:
                 {
-                    return HB_TRUE;
-                }
-            }break;
+                    if( __hb_json_string_strstr( _search, attribute->value_string ) != HB_NULLPTR )
+                    {
+                        return HB_TRUE;
+                    }
+                }break;
+            }
         }
     }
 
-    for( const ch_tag_t
-        * const * it_tag = _record->tags + 0,
-        * const * it_tag_end = _record->tags + CH_RECORD_TAGS_MAX;
-        it_tag != it_tag_end;
-        ++it_tag )
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
     {
-        const ch_tag_t * tag = *it_tag;
-
-        if( tag == HB_NULLPTR )
+        HB_RING_FOREACH( record, ch_tag_t, _record->tags, tag )
         {
-            break;
-        }
-
-        if( __hb_json_string_strstr( _search, tag->value ) != HB_NULLPTR )
-        {
-            return HB_TRUE;
+            if( __hb_json_string_strstr( _search, tag->value ) != HB_NULLPTR )
+            {
+                return HB_TRUE;
+            }
         }
     }
 
@@ -258,28 +242,20 @@ static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, c
         return HB_TRUE;
     }
 
-    for( const ch_attribute_t
-        * const * it_attribute = _record->attributes + 0,
-        * const * it_attribute_end = _record->attributes + CH_RECORD_ATTRIBUTES_MAX;
-        it_attribute != it_attribute_end;
-        ++it_attribute )
+    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) )
     {
-        const ch_attribute_t * attribute = *it_attribute;
-
-        if( attribute == HB_NULLPTR )
+        HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
         {
-            break;
-        }
-
-        switch( attribute->value_type )
-        {
-        case CH_ATTRIBUTE_TYPE_INTEGER:
+            switch( attribute->value_type )
             {
-                if( _search == attribute->value_integer )
+            case CH_ATTRIBUTE_TYPE_INTEGER:
                 {
-                    return HB_TRUE;
-                }
-            }break;
+                    if( _search == attribute->value_integer )
+                    {
+                        return HB_TRUE;
+                    }
+                }break;
+            }
         }
     }
 
@@ -288,20 +264,9 @@ static hb_bool_t __ch_service_records_filter_search_integer( uint64_t _search, c
 //////////////////////////////////////////////////////////////////////////
 static hb_bool_t __ch_service_records_filter_tag( hb_json_string_t _tag, const ch_record_t * _record )
 {
-    for( const ch_tag_t
-        * const * it_tag = _record->tags + 0,
-        * const * it_tag_end = _record->tags + CH_RECORD_TAGS_MAX;
-        it_tag != it_tag_end;
-        ++it_tag )
+    HB_RING_FOREACH( record, ch_tag_t, _record->tags, tag )
     {
-        const ch_tag_t * record_tag = *it_tag;
-
-        if( record_tag == HB_NULLPTR )
-        {
-            break;
-        }
-
-        if( __hb_json_string_strstr( _tag, record_tag->value ) == HB_NULLPTR )
+        if( __hb_json_string_strstr( _tag, tag->value ) == HB_NULLPTR )
         {
             continue;
         }
@@ -314,15 +279,8 @@ static hb_bool_t __ch_service_records_filter_tag( hb_json_string_t _tag, const c
 //////////////////////////////////////////////////////////////////////////
 static hb_bool_t __ch_service_records_filter_string_arguments( hb_json_string_t _name, hb_json_string_t _value, const ch_record_t * _record )
 {
-    for( hb_size_t record_attributes_index = 0; record_attributes_index != CH_RECORD_ATTRIBUTES_MAX; ++record_attributes_index )
+    HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
     {
-        const ch_attribute_t * attribute = _record->attributes[record_attributes_index];
-
-        if( attribute == HB_NULLPTR )
-        {
-            break;
-        }
-
         if( attribute->value_type != CH_ATTRIBUTE_TYPE_STRING ||
             __hb_json_string_strstr( _name, attribute->name ) == HB_NULLPTR ||
             __hb_json_string_strstr( _value, attribute->value_string ) == HB_NULLPTR )
@@ -419,15 +377,18 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             return;
         }
 
-        for( hb_size_t attributes_index = 0; attributes_index != filter->attributes_count; ++attributes_index )
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) )
         {
-            const ch_records_filter_attribute_t * attribute = filter->attributes + attributes_index;
-
-            if( attribute->type == e_records_attributes_string )
+            for( hb_size_t attributes_index = 0; attributes_index != filter->attributes_count; ++attributes_index )
             {
-                if( __ch_service_records_filter_string_arguments( attribute->name, attribute->value_string, _record ) == HB_FALSE )
+                const ch_records_filter_attribute_t * attribute = filter->attributes + attributes_index;
+
+                if( attribute->type == e_records_attributes_string )
                 {
-                    return;
+                    if( __ch_service_records_filter_string_arguments( attribute->name, attribute->value_string, _record ) == HB_FALSE )
+                    {
+                        return;
+                    }
                 }
             }
         }
@@ -449,7 +410,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
     }
 
-    if( ud->tags_count != 0 )
+    if( ud->tags_count != 0 && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
     {
         for( hb_size_t tags_index = 0; tags_index != ud->tags_count; ++tags_index )
         {
@@ -571,16 +532,9 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     {
         __response_write( ud, ",\"attributes\":{" );
 
-        for( hb_size_t attributes_index = 0; attributes_index != CH_RECORD_ATTRIBUTES_MAX; ++attributes_index )
+        HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
         {
-            const ch_attribute_t * attribute = _record->attributes[attributes_index];
-
-            if( attribute == HB_NULLPTR )
-            {
-                break;
-            }
-
-            if( attributes_index != 0 )
+            if( attribute != _record->attributes )
             {
                 __response_write( ud, "," );
             }
@@ -618,16 +572,9 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     {
         __response_write( ud, ",\"tags\":[" );
 
-        for( hb_size_t tags_index = 0; tags_index != CH_RECORD_TAGS_MAX; ++tags_index )
+        HB_RING_FOREACH( record, ch_tag_t, _record->tags, tag )
         {
-            const ch_tag_t * tag = _record->tags[tags_index];
-
-            if( tag == HB_NULLPTR )
-            {
-                break;
-            }
-
-            if( tags_index != 0 )
+            if( tag != _record->tags )
             {
                 __response_write( ud, "," );
             }

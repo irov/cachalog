@@ -26,7 +26,7 @@ static hb_result_t __ch_service_create_messages( ch_service_t * _service )
     }
 
     ch_message_t * message_empty = HB_NEWE( ch_message_t, 1 );
-    HB_RING_INIT( message_empty );
+    HB_RING_INIT( base, message_empty );
     message_empty->created_timestamp = _service->created_timestamp;
     message_empty->capacity = 0;
     message_empty->text[0] = '\0';
@@ -152,15 +152,8 @@ static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestam
     _record->os_family[0] = '\0';
     _record->os_version[0] = '\0';
 
-    for( hb_size_t index = 0; index != CH_RECORD_ATTRIBUTES_MAX; ++index )
-    {
-        _record->attributes[index] = HB_NULLPTR;
-    }
-
-    for( hb_size_t index = 0; index != CH_RECORD_TAGS_MAX; ++index )
-    {
-        _record->tags[index] = HB_NULLPTR;
-    }
+    _record->attributes = HB_NULLPTR;
+    _record->tags = HB_NULLPTR;
 }
 //////////////////////////////////////////////////////////////////////////
 static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_time_t _timestamp, ch_record_t ** _record )
@@ -174,7 +167,7 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( record );
+        HB_RING_INIT( base, record );
 
         _service->records = record;
 
@@ -185,9 +178,9 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
         return HB_SUCCESSFUL;
     }
 
-    if( _timestamp - _service->records->prev->created_timestamp >= _service->timemax )
+    if( _timestamp - HB_RING_GET_PREV( base, _service->records )->created_timestamp >= _service->timemax )
     {
-        while( _timestamp - _service->records->prev->prev->created_timestamp >= _service->timemax )
+        while( _timestamp - HB_RING_GET_PREV_PREV( base, _service->records )->created_timestamp >= _service->timemax )
         {
             if( _service->records_count == 1 )
             {
@@ -197,15 +190,15 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
             {
                 --_service->records_count;
 
-                ch_record_t * old_record = _service->records->prev;
+                ch_record_t * old_record = HB_RING_GET_PREV( base, _service->records );
 
-                HB_RING_REMOVE( old_record );
+                HB_RING_REMOVE( base, old_record );
 
                 HB_FREE( old_record );
             }
         }
 
-        ch_record_t * record = _service->records->prev;
+        ch_record_t * record = HB_RING_GET_PREV( base, _service->records );
         _service->records = record;
 
         *_record = record;
@@ -215,7 +208,7 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
 
     if( _service->records_count >= _service->records_max )
     {
-        ch_record_t * record = _service->records->prev;
+        ch_record_t * record = HB_RING_GET_PREV( base, _service->records );
         _service->records = record;
 
         *_record = record;
@@ -230,7 +223,7 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( _service->records, record );
+    HB_RING_PUSH_BACK( base, _service->records, record );
     _service->records = record;
 
     ++_service->records_count;
@@ -287,7 +280,7 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
 
         message->capacity = capacity;
 
-        HB_RING_INIT( message );
+        HB_RING_INIT( base, message );
 
         _service->messages[index] = message;
 
@@ -298,9 +291,11 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
         return HB_SUCCESSFUL;
     }
 
-    if( _timestamp - _service->messages[index]->prev->created_timestamp >= _service->timemax )
+    ch_message_t * messages = _service->messages[index];
+
+    if( _timestamp - HB_RING_GET_PREV( base, messages )->created_timestamp >= _service->timemax )
     {
-        while( _timestamp - _service->messages[index]->prev->prev->created_timestamp >= _service->timemax )
+        while( _timestamp - HB_RING_GET_PREV_PREV( base, messages )->created_timestamp >= _service->timemax )
         {
             if( _service->messages_count[index] == 1 )
             {
@@ -310,15 +305,15 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
             {
                 --_service->messages_count[index];
 
-                ch_message_t * old_message = _service->messages[index]->prev;
+                ch_message_t * old_message = HB_RING_GET_PREV( base, messages );
 
-                HB_RING_REMOVE( old_message );
+                HB_RING_REMOVE( base, old_message );
 
                 HB_FREE( old_message );
             }
         }
 
-        ch_message_t * message = _service->messages[index]->prev;
+        ch_message_t * message = HB_RING_GET_PREV( base, messages );
         _service->messages[index] = message;
 
         *_message = message;
@@ -328,7 +323,7 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
 
     if( _service->messages_count[index] >= _service->messages_max )
     {
-        ch_message_t * message = _service->messages[index]->prev;
+        ch_message_t * message = HB_RING_GET_PREV( base, messages );
         _service->messages[index] = message;
 
         *_message = message;
@@ -345,7 +340,7 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
 
     message->capacity = capacity;
 
-    HB_RING_PUSH_BACK( _service->messages[index], message );
+    HB_RING_PUSH_BACK( base, _service->messages[index], message );
     _service->messages[index] = message;
 
     ++_service->messages_count[index];
@@ -401,7 +396,7 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( attribute );
+        HB_RING_INIT( base, attribute );
 
         _service->attributes = attribute;
 
@@ -412,9 +407,9 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
         return HB_SUCCESSFUL;
     }
 
-    if( _timestamp - _service->attributes->prev->created_timestamp >= _service->timemax )
+    if( _timestamp - HB_RING_GET_PREV( base, _service->attributes )->created_timestamp >= _service->timemax )
     {
-        while( _timestamp - _service->attributes->prev->prev->created_timestamp >= _service->timemax )
+        while( _timestamp - HB_RING_GET_PREV_PREV( base, _service->attributes )->created_timestamp >= _service->timemax )
         {
             if( _service->attributes_count == 1 )
             {
@@ -424,15 +419,15 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
             {
                 --_service->attributes_count;
 
-                ch_attribute_t * old_attribute = _service->attributes->prev;
+                ch_attribute_t * old_attribute = HB_RING_GET_PREV( base, _service->attributes );
 
-                HB_RING_REMOVE( old_attribute );
+                HB_RING_REMOVE( base, old_attribute );
 
                 HB_FREE( old_attribute );
             }
         }
 
-        ch_attribute_t * attribute = _service->attributes->prev;
+        ch_attribute_t * attribute = HB_RING_GET_PREV( base, _service->attributes );
         _service->attributes = attribute;
 
         *_attribute = attribute;
@@ -442,7 +437,7 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
 
     if( _service->attributes_count >= _service->attributes_max )
     {
-        ch_attribute_t * attribute = _service->attributes->prev;
+        ch_attribute_t * attribute = HB_RING_GET_PREV( base, _service->attributes );
         _service->attributes = attribute;
 
         *_attribute = attribute;
@@ -457,7 +452,7 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( _service->attributes, attribute );
+    HB_RING_PUSH_BACK( base, _service->attributes, attribute );
     _service->attributes = attribute;
 
     ++_service->attributes_count;
@@ -501,7 +496,7 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( tag );
+        HB_RING_INIT( base, tag );
 
         _service->tags = tag;
 
@@ -511,10 +506,10 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
 
         return HB_SUCCESSFUL;
     }
-
-    if( _timestamp - _service->tags->prev->created_timestamp >= _service->timemax )
+    
+    if( _timestamp - HB_RING_GET_PREV( base, _service->tags )->created_timestamp >= _service->timemax )
     {
-        while( _timestamp - _service->tags->prev->prev->created_timestamp >= _service->timemax )
+        while( _timestamp - HB_RING_GET_PREV_PREV( base, _service->tags )->created_timestamp >= _service->timemax )
         {
             if( _service->tags_count == 1 )
             {
@@ -524,15 +519,15 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
             {
                 --_service->tags_count;
 
-                ch_tag_t * old_tag = _service->tags->prev;
+                ch_tag_t * old_tag = HB_RING_GET_PREV( base, _service->tags );
 
-                HB_RING_REMOVE( old_tag );
+                HB_RING_REMOVE( base, old_tag );
 
                 HB_FREE( old_tag );
             }
         }
 
-        ch_tag_t * tag = _service->tags->prev;
+        ch_tag_t * tag = HB_RING_GET_PREV( base, _service->tags );
         _service->tags = tag;
 
         *_tag = tag;
@@ -542,7 +537,7 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
 
     if( _service->tags_count >= _service->tags_max )
     {
-        ch_tag_t * tag = _service->tags->prev;
+        ch_tag_t * tag = HB_RING_GET_PREV( base, _service->tags );
         _service->tags = tag;
 
         *_tag = tag;
@@ -557,7 +552,7 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( _service->tags, tag );
+    HB_RING_PUSH_BACK( base, _service->tags, tag );
     _service->tags = tag;
 
     ++_service->tags_count;
@@ -587,15 +582,11 @@ void ch_service_select_records( ch_service_t * _service, const char * _project, 
 {
     hb_mutex_lock( _service->records_mutex );
 
-    ch_record_t * root_record = _service->records;
-
-    if( root_record != HB_NULLPTR )
+    if( _service->records != HB_NULLPTR )
     {
         uint64_t index = 0;
-
-        ch_record_t * record = _service->records;
-
-        do
+        
+        HB_RING_FOREACH( base, ch_record_t, _service->records, record )
         {
             if( _timestamp - record->created_timestamp >= _service->timemax )
             {
@@ -609,14 +600,14 @@ void ch_service_select_records( ch_service_t * _service, const char * _project, 
 
             if( _timestamp - record->created_timestamp < _timeoffset )
             {
-                record = record->next;
+                record = HB_RING_GET_NEXT( base, record );
 
                 continue;
             }
 
             if( strncmp( record->project, _project, CH_PROJECT_MAXLEN ) != 0 )
             {
-                record = record->next;
+                record = HB_RING_GET_NEXT( base, record );
 
                 continue;
             }
@@ -629,9 +620,7 @@ void ch_service_select_records( ch_service_t * _service, const char * _project, 
             }
 
             ++index;
-
-            record = record->next;
-        } while( record != root_record );
+        }
     }
 
     hb_mutex_unlock( _service->records_mutex );

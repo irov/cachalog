@@ -88,7 +88,6 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     HB_UNUSED( host );
 
     const char * uri = evhttp_request_get_uri( _request );
-    HB_UNUSED( uri );
 
     struct evbuffer * output_buffer = evhttp_request_get_output_buffer( _request );
 
@@ -124,8 +123,11 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     char response_reason[CH_GRID_REASON_MAX_SIZE] = {'\0'};
     ch_http_code_t response_code = CH_HTTP_OK;
-
     hb_size_t response_data_size = 0;
+
+    HB_LOG_MESSAGE_INFO( "grid", "request uri: %s"
+        , uri
+    );
 
     char token[CH_TOKEN_SIZE + 1 + 1] = {'\0'};
     char project[CH_PROJECT_MAXLEN + 1 + 1] = {'\0'};
@@ -161,6 +163,11 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
         return;
     }
+
+    HB_LOG_MESSAGE_INFO( "grid", "request project: %s cmd: %s"
+        , project
+        , cmd_name
+    );
 
     ch_service_t * service = process->service;
 
@@ -202,6 +209,13 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
         return;
     }
+
+    HB_LOG_MESSAGE_INFO( "grid", "response code: %u reason: %s data: %.*s"
+        , response_code
+        , response_reason
+        , response_data_size
+        , process->response_data
+    );
 
     if( evbuffer_add( output_buffer, process->response_data, response_data_size ) != 0 )
     {
