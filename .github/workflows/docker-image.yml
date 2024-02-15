@@ -60,6 +60,6 @@ jobs:
         --name cachalot-dev \\
         --restart on-failure:3 \\
         --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} \\
-        -v "/var/log/grid:/var/log/grid"
+        -v "/var/log/grid:/var/log/grid" \\
         -p 5555:5555 \\
         cachalot:dev"
