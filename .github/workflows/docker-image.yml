@@ -15,7 +15,14 @@ jobs:
     env:
       CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
 
-    steps:    
+    steps:
+      - name: Validate Requirements SECRETS
+        run: |
+          if [[ -z "${{ CACHALOT__TOKEN }}" ]]; then
+            echo "Secret CACHALOT__TOKEN is missing"
+            exit 1
+          fi
+
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: docker build . --file ./docker/Dockerfile -t cachalot:dev
@@ -47,9 +54,11 @@ jobs:
       run: ssh staging -C "sudo docker rm cachalot-dev && docker images -f “dangling=true” -q"
       continue-on-error: true
       
-    - name: RUN DOCKER WITH DEFAULT_TOKEN
-      if: ${{env.CACHALOT__TOKEN == ''}}
-      run: ssh staging -C "sudo docker run -d --name cachalot-dev --restart on-failure:3 -p 5555:5555 cachalot:dev"
     - name: RUN DOCKER
-      if: ${{env.CACHALOT__TOKEN != ''}}
-      run: ssh staging -C "sudo docker run -d --name cachalot-dev --restart on-failure:3 --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} -p 5555:5555 cachalot:dev"
+      run: |
+        ssh staging -C "sudo docker run -d \\
+        --name cachalot-dev \\
+        --restart on-failure:3 \\
+        --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} \\
+        -p 5555:5555 \\
+        cachalot:dev"
