@@ -16,12 +16,12 @@ jobs:
       CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
 
     steps:
-      - name: Validate Requirements SECRETS
-        run: |
-          if [[ -z "${{ CACHALOT__TOKEN }}" ]]; then
-            echo "Secret CACHALOT__TOKEN is missing"
-            exit 1
-          fi
+    - name: Validate Requirements SECRETS
+      run: |
+        if [[ -z "${{ CACHALOT__TOKEN }}" ]]; then
+          echo "Secret CACHALOT__TOKEN is missing"
+          exit 1
+        fi
 
     - uses: actions/checkout@v3
     - name: Build the Docker image
