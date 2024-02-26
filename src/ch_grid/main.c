@@ -96,17 +96,22 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
+    struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
+
+    if( output_headers == HB_NULLPTR )
+    {
+        return;
+    }
+
+    evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" );
+    evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" );
+    evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "GET,POST,OPTIONS" );
+    evhttp_add_header( output_headers, "Content-Type", "application/json" );
+
     enum evhttp_cmd_type command_type = evhttp_request_get_command( _request );
 
     if( command_type == EVHTTP_REQ_OPTIONS )
     {
-        struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
-
-        evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" );
-        evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" );
-        evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "POST" );
-        evhttp_add_header( output_headers, "Content-Type", "application/json" );
-
         evhttp_send_reply( _request, HTTP_OK, "", output_buffer );
 
         return;
@@ -224,12 +229,10 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
-    struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
+    char response_data_size_str[16] = {'\0'};
+    snprintf( response_data_size_str, sizeof( response_data_size_str ), "%zu", response_data_size );
 
-    evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" );
-    evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" );
-    evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "POST" );
-    evhttp_add_header( output_headers, "Content-Type", "application/json" );
+    evhttp_add_header( output_headers, "Content-Length", response_data_size_str );
 
     evhttp_send_reply( _request, response_code, response_reason, output_buffer );
 }
