@@ -53,6 +53,10 @@ typedef struct ch_grid_config_t
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_process_handle_t
 {
+    uint32_t id;
+    
+    uint64_t request_enumerator;
+
     evutil_socket_t * ev_socket;
     hb_mutex_handle_t * mutex_ev_socket;
 
@@ -84,30 +88,98 @@ static ch_grid_cmd_inittab_t grid_cmds[] =
 //////////////////////////////////////////////////////////////////////////
 static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 {
+    hb_time_t t_begin;
+    hb_monotonic( &t_begin );
+
+    ch_grid_process_handle_t * process = (ch_grid_process_handle_t *)_ud;
+
+    uint64_t request_id = process->request_enumerator++;
+
     const char * host = evhttp_request_get_host( _request );
     HB_UNUSED( host );
 
     const char * uri = evhttp_request_get_uri( _request );
 
+    HB_LOG_MESSAGE_INFO( "grid", "[%u:%" PRIu64 "] request uri: %s host: %s"
+        , process->id
+        , request_id
+        , uri
+        , host
+    );
+
     struct evbuffer * output_buffer = evhttp_request_get_output_buffer( _request );
 
     if( output_buffer == HB_NULLPTR )
     {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid get output buffer"
+            , process->id
+            , request_id
+        );
+
         return;
     }
 
     struct evkeyvalq * output_headers = evhttp_request_get_output_headers( _request );
 
     if( output_headers == HB_NULLPTR )
-    {
+    {        
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid get output headers"
+            , process->id
+            , request_id
+        );
+
         return;
     }
 
-    evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" );
-    evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" );
-    evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "GET,POST,OPTIONS" );
-    evhttp_add_header( output_headers, "Access-Control-Max-Age", "600" );
-    evhttp_add_header( output_headers, "Content-Type", "application/json" );
+    if( evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Access-Control-Allow-Origin:*'"
+            , process->id
+            , request_id
+        );
+
+        return;
+    }
+
+    if( evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Access-Control-Allow-Headers:*'"
+            , process->id
+            , request_id
+        );
+
+        return;
+    }
+    
+    if( evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "GET,POST,OPTIONS" ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Access-Control-Allow-Methods:GET,POST,OPTIONS'"
+            , process->id
+            , request_id
+        );
+
+        return;
+    }
+
+    if( evhttp_add_header( output_headers, "Access-Control-Max-Age", "600" ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Access-Control-Max-Age:600'"
+            , process->id
+            , request_id
+        );
+
+        return;
+    }
+
+    if( evhttp_add_header( output_headers, "Content-Type", "application/json" ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Content-Type:application/json'"
+            , process->id
+            , request_id
+        );
+
+        return;
+    }
 
     enum evhttp_cmd_type command_type = evhttp_request_get_command( _request );
 
@@ -125,15 +197,9 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
-    ch_grid_process_handle_t * process = (ch_grid_process_handle_t *)_ud;
-
     char response_reason[CH_GRID_REASON_MAX_SIZE] = {'\0'};
     ch_http_code_t response_code = CH_HTTP_OK;
     hb_size_t response_data_size = 0;
-
-    HB_LOG_MESSAGE_INFO( "grid", "request uri: %s"
-        , uri
-    );
 
     char token[CH_TOKEN_SIZE + 1 + 1] = {'\0'};
     char project[CH_PROJECT_MAXLEN + 1 + 1] = {'\0'};
@@ -169,11 +235,6 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
         return;
     }
-
-    HB_LOG_MESSAGE_INFO( "grid", "request project: %s cmd: %s"
-        , project
-        , cmd_name
-    );
 
     ch_service_t * service = process->service;
 
@@ -216,13 +277,6 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
-    HB_LOG_MESSAGE_INFO( "grid", "response code: %u reason: %s data: %.*s"
-        , response_code
-        , response_reason
-        , response_data_size
-        , process->response_data
-    );
-
     if( evbuffer_add( output_buffer, process->response_data, response_data_size ) != 0 )
     {
         evhttp_send_reply( _request, HTTP_INTERNAL, "invalid add response to buffer", output_buffer );
@@ -233,9 +287,31 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     char response_data_size_str[16] = {'\0'};
     snprintf( response_data_size_str, sizeof( response_data_size_str ), "%zu", response_data_size );
 
-    evhttp_add_header( output_headers, "Content-Length", response_data_size_str );
+    if( evhttp_add_header( output_headers, "Content-Length", response_data_size_str ) != 0 )
+    {
+        HB_LOG_MESSAGE_ERROR( "grid", "[%u:%" PRIu64 "] invalid add header 'Content-Length:%s'"
+            , process->id
+            , request_id
+            , response_data_size_str
+        );
+
+        return;
+    }
 
     evhttp_send_reply( _request, response_code, response_reason, output_buffer );
+
+    hb_time_t t_end;
+    hb_monotonic( &t_end );
+
+    HB_LOG_MESSAGE_INFO( "grid", "[%u:%" PRIu64 "] response code: %u reason: %s data: %.*s time: %" PRIu64 ""
+        , process->id
+        , request_id
+        , response_code
+        , response_reason
+        , response_data_size
+        , process->response_data
+        , t_end - t_begin
+    );
 }
 //////////////////////////////////////////////////////////////////////////
 static void __ch_ev_accept_socket( ch_grid_process_handle_t * _handle, struct evhttp * _server )
@@ -602,6 +678,9 @@ int main( int _argc, char * _argv[] )
     for( uint32_t i = 0; i != config->max_thread; ++i )
     {
         ch_grid_process_handle_t * process_handle = process_handles + i;
+
+        process_handle->id = i;
+        process_handle->request_enumerator = 0;
 
         process_handle->ev_socket = &ev_socket;
         process_handle->mutex_ev_socket = mutex_ev_socket;
