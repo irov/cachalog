@@ -106,6 +106,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     evhttp_add_header( output_headers, "Access-Control-Allow-Origin", "*" );
     evhttp_add_header( output_headers, "Access-Control-Allow-Headers", "*" );
     evhttp_add_header( output_headers, "Access-Control-Allow-Methods", "GET,POST,OPTIONS" );
+    evhttp_add_header( output_headers, "Access-Control-Max-Age", "600" );
     evhttp_add_header( output_headers, "Content-Type", "application/json" );
 
     enum evhttp_cmd_type command_type = evhttp_request_get_command( _request );
