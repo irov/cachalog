@@ -615,10 +615,13 @@ int main( int _argc, char * _argv[] )
         hb_json_free( json_handle );
     }
 
-    if( strlen( config->token ) != CH_TOKEN_SIZE )
+    size_t token_size = strlen( config->token );
+
+    if( token_size != CH_TOKEN_SIZE )
     {
-        HB_LOG_MESSAGE_CRITICAL( "grid", "invalid token size '%s' [%d]"
+        HB_LOG_MESSAGE_CRITICAL( "grid", "invalid token '%s' size %zu != %u"
             , config->token
+            , token_size
             , CH_TOKEN_SIZE
         );
 
