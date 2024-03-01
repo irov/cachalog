@@ -40,7 +40,7 @@ WORKDIR /app
 COPY --from=builder /app/bin/cachalot_unix/ /app/tmp
 RUN ["cp", "/app/tmp/Unix Makefiles/Debug/ch_grid", "/app"]
 
-RUN echo '{ "max_thread": 16, "max_record": 10000, "max_time": 604800, "grid_uri": "0.0.0.0", "grid_port": 5555, "log_file": "/var/log/grid/cachalot.log", "log_verboselevel": "debug", "name": "grid" }' >> /app/docker_config.json
+RUN echo '{ "max_thread": 1, "max_record": 10000, "max_time": 604800, "grid_uri": "0.0.0.0", "grid_port": 5555, "log_file": "/var/log/grid/cachalot.log", "log_verboselevel": "debug", "name": "grid" }' >> /app/docker_config.json
 
 EXPOSE 5555
 RUN chmod +X ./ch_grid
