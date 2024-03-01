@@ -26,6 +26,7 @@ RUN bash ./build_solution_debug.bash
 
 FROM bitnami/minideb:buster
 
+RUN install_packages strace 
 ENV DEBUG=False
 
 ENV CACHALOT__TOKEN="NOT_FOR_PROD"
