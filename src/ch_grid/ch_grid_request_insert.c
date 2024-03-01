@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 //////////////////////////////////////////////////////////////////////////
 typedef struct json_foreach_ud_t
@@ -152,7 +153,7 @@ static hb_result_t __ch_grid_json_tags_visitor( hb_size_t _index, const hb_json_
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-static hb_bool_t __record_attribute_boolean( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, hb_bool_t * _value )
+static hb_bool_t __record_attribute_boolean( uint32_t _processId, uint64_t _requestId, ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, hb_bool_t * _value )
 {
     const hb_json_handle_t * json_field;
     if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
@@ -165,12 +166,19 @@ static hb_bool_t __record_attribute_boolean( ch_record_t * _record, ch_record_at
         return HB_FALSE;
     }
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] set record attribute '%s' value: %" PRIu32 ""
+        , _processId
+        , _requestId
+        , _name
+        , *_value
+    );
+
     _record->flags |= 1LL << _flag;
 
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-static hb_bool_t __record_attribute_uint32( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint32_t * _value )
+static hb_bool_t __record_attribute_uint32( uint32_t _processId, uint64_t _requestId, ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint32_t * _value )
 {
     const hb_json_handle_t * json_field;
     if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
@@ -183,12 +191,19 @@ static hb_bool_t __record_attribute_uint32( ch_record_t * _record, ch_record_att
         return HB_FALSE;
     }
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] set record attribute '%s' value: %" PRIu32 ""
+        , _processId
+        , _requestId
+        , _name
+        , *_value
+    );
+
     _record->flags |= 1LL << _flag;
 
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-static hb_bool_t __record_attribute_uint64( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint64_t * _value )
+static hb_bool_t __record_attribute_uint64( uint32_t _processId, uint64_t _requestId, ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, uint64_t * _value )
 {
     const hb_json_handle_t * json_field;
     if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
@@ -201,12 +216,19 @@ static hb_bool_t __record_attribute_uint64( ch_record_t * _record, ch_record_att
         return HB_FALSE;
     }
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] set record attribute '%s' value: %" PRIu64 ""
+        , _processId
+        , _requestId
+        , _name
+        , *_value
+    );
+
     _record->flags |= 1LL << _flag;
 
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, char * _value, hb_size_t _capacity )
+static hb_bool_t __record_attribute_string( uint32_t _processId, uint64_t _requestId, ch_record_t * _record, ch_record_attributes_flag_e _flag, const hb_json_handle_t * _json, const char * _name, char * _value, hb_size_t _capacity )
 {
     const hb_json_handle_t * json_field;
     if( hb_json_get_field( _json, _name, &json_field ) == HB_FAILURE )
@@ -219,15 +241,28 @@ static hb_bool_t __record_attribute_string( ch_record_t * _record, ch_record_att
         return HB_FALSE;
     }
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] set record attribute '%s' value: %s"
+        , _processId
+        , _requestId
+        , _name
+        , _value
+    );
+
     _record->flags |= 1LL << _flag;
 
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_service_t * _service, const char * _project, char * const _reason )
+static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t _processId, uint64_t _requestId, ch_service_t * _service, const char * _project, char * const _reason )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
+
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] get record timestamp: %llu"
+        , _processId
+        , _requestId
+        , timestamp
+    );
 
     ch_record_t * record;
     if( ch_service_get_record( _service, timestamp, &record ) == HB_FAILURE )
@@ -237,9 +272,20 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_INTERNAL;
     }
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] set project: %s"
+        , _processId
+        , _requestId
+        , _project
+    );
+
     strncpy( record->project, _project, sizeof( record->project ) );
 
-    if( __record_attribute_string( record, CH_RECORD_ATTRIBUTE_USER_ID, _json, "user.id", record->user_id, sizeof( record->user_id ) ) == HB_FALSE )
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] fill record attributes"
+        , _processId
+        , _requestId
+    );
+
+    if( __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_USER_ID, _json, "user.id", record->user_id, sizeof( record->user_id ) ) == HB_FALSE )
     {
         snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get required user.id" );
 
@@ -253,15 +299,15 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_BADREQUEST;
     }
 
-    if( __record_attribute_uint32( record, CH_RECORD_ATTRIBUTE_LEVEL, _json, "level", &record->level ) == HB_FALSE )
+    if( __record_attribute_uint32( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_LEVEL, _json, "level", &record->level ) == HB_FALSE )
     {
         snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get required level" );
 
         return CH_HTTP_BADREQUEST;
     }
 
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_SERVICE, _json, "service", record->service, sizeof( record->service ) );
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_THREAD, _json, "thread", record->thread, sizeof( record->thread ) );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_SERVICE, _json, "service", record->service, sizeof( record->service ) );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_THREAD, _json, "thread", record->thread, sizeof( record->thread ) );
 
     hb_json_string_t message_string;
     if( hb_json_get_field_string( _json, "message", &message_string ) == HB_SUCCESSFUL )
@@ -292,18 +338,18 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         return CH_HTTP_BADREQUEST;
     }
 
-    __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_TIMESTAMP, _json, "timestamp", &record->timestamp );
-    __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_LIVE, _json, "live", &record->live );
+    __record_attribute_uint64( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_TIMESTAMP, _json, "timestamp", &record->timestamp );
+    __record_attribute_uint64( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_LIVE, _json, "live", &record->live );
 
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, _json, "build.environment", record->build_environment, sizeof( record->build_environment ) );
-    __record_attribute_boolean( record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, _json, "build.release", &record->build_release );
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, _json, "build.version", record->build_version, sizeof( record->build_version ) );
-    __record_attribute_uint64( record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, _json, "build.number", &record->build_number );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, _json, "build.environment", record->build_environment, sizeof( record->build_environment ) );
+    __record_attribute_boolean( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, _json, "build.release", &record->build_release );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, _json, "build.version", record->build_version, sizeof( record->build_version ) );
+    __record_attribute_uint64( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, _json, "build.number", &record->build_number );
 
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, _json, "device.model", record->device_model, sizeof( record->device_model ) );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, _json, "device.model", record->device_model, sizeof( record->device_model ) );
 
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_OS_FAMILY, _json, "os.family", record->os_family, sizeof( record->os_family ) );
-    __record_attribute_string( record, CH_RECORD_ATTRIBUTE_OS_VERSION, _json, "os.version", record->os_version, sizeof( record->os_version ) );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_OS_FAMILY, _json, "os.family", record->os_family, sizeof( record->os_family ) );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_OS_VERSION, _json, "os.version", record->os_version, sizeof( record->os_version ) );
 
     const hb_json_handle_t * json_attributes;
     if( hb_json_get_field( _json, "attributes", &json_attributes ) == HB_SUCCESSFUL )
@@ -364,6 +410,9 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
 //////////////////////////////////////////////////////////////////////////
 typedef struct __ch_records_visitor_t
 {
+    uint32_t process_id;
+    uint64_t request_id;
+
     ch_service_t * service;
     const char * project;
 
@@ -377,7 +426,21 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
 
     __ch_records_visitor_t * ud = (__ch_records_visitor_t *)_ud;
 
-    ch_http_code_t http_code = __record_insert( _value, ud->service, ud->project, ud->http_reason );
+    if( hb_log_check_verbose_level( HB_LOG_DEBUG ) == HB_TRUE )
+    {
+        char value_dumps[HB_DATA_MAX_SIZE] = {'\0'};
+        if( hb_json_dumps( _value, value_dumps, sizeof( value_dumps ), HB_NULLPTR ) == HB_SUCCESSFUL )
+        {
+            HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] visit record index: %zu data: %s"
+                , ud->process_id
+                , ud->request_id
+                , _index
+                , value_dumps
+            );
+        }
+    }
+
+    ch_http_code_t http_code = __record_insert( _value, ud->process_id, ud->request_id, ud->service, ud->project, ud->http_reason );
 
     if( http_code != CH_HTTP_OK )
     {
@@ -399,7 +462,22 @@ ch_http_code_t ch_grid_request_insert( const ch_grid_request_args_t * _args )
         return CH_HTTP_BADREQUEST;
     }
 
+    if( hb_json_is_array( json_records ) == HB_FALSE )
+    {
+        snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "invalid records is not array" );
+
+        return CH_HTTP_BADREQUEST;
+    }
+
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] insert visit records count: %zu"
+        , _args->process_id
+        , _args->request_id
+        , hb_json_get_array_size( json_records )
+    );
+
     __ch_records_visitor_t ud;
+    ud.process_id = _args->process_id;
+    ud.request_id = _args->request_id;
     ud.service = _args->service;
     ud.project = _args->project;
     ud.http_code = CH_HTTP_OK;

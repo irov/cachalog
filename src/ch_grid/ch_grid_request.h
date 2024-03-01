@@ -10,6 +10,7 @@ typedef struct ch_grid_request_args_t
 {
     uint32_t process_id;
     uint64_t request_id;
+
     ch_service_t * service;
     const char * project;
     const hb_json_handle_t * json;
