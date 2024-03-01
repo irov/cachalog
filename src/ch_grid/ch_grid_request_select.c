@@ -1,4 +1,4 @@
-#include "ch_config.h"
+#include "ch_grid_request.h"
 
 #include "ch_service.h"
 
@@ -656,7 +656,7 @@ static hb_bool_t __strntoull( const char * _str, size_t _size, uint64_t * const 
     return HB_TRUE;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * _size, char * const _reason )
+ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
 {
     hb_time_t timestamp;
     hb_time( &timestamp );
@@ -664,20 +664,20 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
     hb_time_t time_offset = 0;
     hb_time_t time_limit = HB_TIME_SECONDS_IN_DAY;
     hb_size_t count_limit = 100;
-    hb_json_get_field_uint64( _json, "time.offset", &time_offset );
-    hb_json_get_field_uint64( _json, "time.limit", &time_limit );
-    hb_json_get_field_size_t( _json, "count.limit", &count_limit );
+    hb_json_get_field_uint64( _args->json, "time.offset", &time_offset );
+    hb_json_get_field_uint64( _args->json, "time.limit", &time_limit );
+    hb_json_get_field_size_t( _args->json, "count.limit", &count_limit );
 
     ch_records_visitor_select_t ud;
 
     ud.filter.flags = CH_RECORD_ATTRIBUTE_NONE;
 
     const hb_json_handle_t * json_filter = HB_NULLPTR;
-    if( hb_json_get_field( _json, "filter", &json_filter ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _args->json, "filter", &json_filter ) == HB_SUCCESSFUL )
     {
         if( hb_json_is_object( json_filter ) == HB_FALSE )
         {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter is not object" );
+            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter is not object" );
 
             return CH_HTTP_BADREQUEST;
         }
@@ -703,7 +703,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
 
             if( hb_json_is_array( json_attributes ) == HB_FALSE )
             {
-                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes is not array" );
+                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes is not array" );
 
                 return CH_HTTP_BADREQUEST;
             }
@@ -715,14 +715,14 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 const hb_json_handle_t * json_attribute;
                 if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u] is not object", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u] is not object", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_get_field_string( json_attribute, "name", &ud.filter.attributes[index].name ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].name is not string", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].name is not string", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
@@ -730,7 +730,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 const hb_json_handle_t * attribute_value;
                 if( hb_json_get_field( json_attribute, "value", &attribute_value ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not found", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not found", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
@@ -753,7 +753,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                     {
                         if( hb_json_get_field_uint64( json_attribute, "value", &filter_attribute->value_integer ) == HB_FAILURE )
                         {
-                            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
 
                             return CH_HTTP_BADREQUEST;
                         }
@@ -762,14 +762,14 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                     {
                         if( hb_json_get_field_string( json_attribute, "value", &filter_attribute->value_string ) == HB_FAILURE )
                         {
-                            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
 
                             return CH_HTTP_BADREQUEST;
                         }
                     }break;
                 default:
                     {
-                        snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not boolean, integer or string", index );
+                        snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not boolean, integer or string", index );
 
                         return CH_HTTP_BADREQUEST;
                         break;
@@ -787,7 +787,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
 
             if( hb_json_is_array( json_tags ) == HB_FALSE )
             {
-                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.tags is not array" );
+                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.tags is not array" );
 
                 return CH_HTTP_BADREQUEST;
             }
@@ -799,14 +799,14 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
                 const hb_json_handle_t * json_tag;
                 if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get element filter.tags[%u]", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "invalid get element filter.tags[%u]", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_to_string( json_tag, &ud.tags[index] ) == HB_FAILURE )
                 {
-                    snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "filter.tags[%u] is not string", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.tags[%u] is not string", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
@@ -822,7 +822,7 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
     ud.search_integer = 0;
 
     const hb_json_handle_t * json_search;
-    if( hb_json_get_field( _json, "search", &json_search ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _args->json, "search", &json_search ) == HB_SUCCESSFUL )
     {
         hb_json_to_string( json_search, &ud.search );
 
@@ -832,11 +832,11 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
     ud.tags_count = 0;
 
     const hb_json_handle_t * json_tags;
-    if( hb_json_get_field( _json, "tags", &json_tags ) == HB_SUCCESSFUL )
+    if( hb_json_get_field( _args->json, "tags", &json_tags ) == HB_SUCCESSFUL )
     {
         if( hb_json_is_array( json_tags ) == HB_FALSE )
         {
-            snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "tags is not array" );
+            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "tags is not array" );
 
             return CH_HTTP_BADREQUEST;
         }
@@ -848,14 +848,14 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
             const hb_json_handle_t * json_tag;
             if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
             {
-                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get element tags[%u]", index );
+                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "invalid get element tags[%u]", index );
 
                 return CH_HTTP_BADREQUEST;
             }
 
             if( hb_json_to_string( json_tag, &ud.tags[index] ) == HB_FAILURE )
             {
-                snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "tags[%u] is not string", index );
+                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "tags[%u] is not string", index );
 
                 return CH_HTTP_BADREQUEST;
             }
@@ -864,13 +864,13 @@ ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _pr
         ud.tags_count = tags_count;
     }
 
-    ud.response = _response;
-    ud.capacity = _capacity;
-    ud.size = _size;
+    ud.response = _args->response;
+    ud.capacity = CH_GRID_RESPONSE_DATA_MAX_SIZE;
+    ud.size = _args->response_size;
 
-    __response_write( &ud, "{\"project\":\"%s\",\"records\":[", _project );
+    __response_write( &ud, "{\"project\":\"%s\",\"records\":[", _args->project );
 
-    ch_service_select_records( _service, _project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud );
+    ch_service_select_records( _args->service, _args->project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud );
 
     __response_write( &ud, "]}" );
 

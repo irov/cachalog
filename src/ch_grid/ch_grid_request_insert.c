@@ -1,4 +1,4 @@
-#include "ch_config.h"
+#include "ch_grid_request.h"
 
 #include "ch_service.h"
 
@@ -18,7 +18,7 @@ typedef struct json_foreach_ud_t
 
     hb_time_t timestamp;
 
-    char reason[CH_GRID_REASON_MAX_SIZE];
+    char * reason;
 } json_foreach_ud_t;
 //////////////////////////////////////////////////////////////////////////
 static hb_result_t __ch_grid_json_attributes_visitor( hb_size_t _index, const hb_json_handle_t * _key, const hb_json_handle_t * _value, void * _ud )
@@ -319,11 +319,10 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         ud.service = _service;
         ud.record = record;
         ud.timestamp = timestamp;
+        ud.reason = _reason;
 
         if( hb_json_visit_object( json_attributes, &__ch_grid_json_attributes_visitor, &ud ) == HB_FAILURE )
         {
-            strncpy( _reason, ud.reason, CH_GRID_REASON_MAX_SIZE );
-
             return CH_HTTP_BADREQUEST;
         }
 
@@ -347,11 +346,10 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, ch_servic
         ud.service = _service;
         ud.record = record;
         ud.timestamp = timestamp;
+        ud.reason = _reason;
 
         if( hb_json_visit_array( json_tags, &__ch_grid_json_tags_visitor, &ud ) == HB_FAILURE )
         {
-            strncpy( _reason, ud.reason, CH_GRID_REASON_MAX_SIZE );
-
             return CH_HTTP_BADREQUEST;
         }
 
@@ -370,7 +368,7 @@ typedef struct __ch_records_visitor_t
     const char * project;
 
     ch_http_code_t http_code;
-    char http_reason[CH_GRID_REASON_MAX_SIZE];
+    char * http_reason;
 } __ch_records_visitor_t;
 //////////////////////////////////////////////////////////////////////////
 static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t * _value, void * _ud )
@@ -391,30 +389,28 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason )
+ch_http_code_t ch_grid_request_insert( const ch_grid_request_args_t * _args )
 {
     const hb_json_handle_t * json_records;
-    if( hb_json_get_field( _json, "records", &json_records ) == HB_FAILURE )
+    if( hb_json_get_field( _args->json, "records", &json_records ) == HB_FAILURE )
     {
-        snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get records" );
+        snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "invalid get records" );
 
         return CH_HTTP_BADREQUEST;
     }
 
     __ch_records_visitor_t ud;
-    ud.service = _service;
-    ud.project = _project;
+    ud.service = _args->service;
+    ud.project = _args->project;
     ud.http_code = CH_HTTP_OK;
-    ud.http_reason[0] = '\0';
+    ud.http_reason = _args->reason;
 
     if( hb_json_visit_array( json_records, &__records_visitor, &ud ) == HB_FAILURE )
     {
-        strncpy( _reason, ud.http_reason, CH_GRID_REASON_MAX_SIZE );
-
         return CH_HTTP_BADREQUEST;
     }
 
-    *_size += (hb_size_t)snprintf( _response, _capacity, "{}" );
+    *_args->response_size += (hb_size_t)snprintf( _args->response, CH_GRID_RESPONSE_DATA_MAX_SIZE, "{}" );
 
     return CH_HTTP_OK;
 }

@@ -1,6 +1,7 @@
 #include "ch_config.h"
 
 #include "ch_service.h"
+#include "ch_grid_request.h"
 
 #include "hb_thread/hb_thread.h"
 #include "hb_mutex/hb_mutex.h"
@@ -49,6 +50,9 @@ typedef struct ch_grid_config_t
     uint64_t max_time;
 
     char log_file[HB_MAX_PATH];
+    hb_log_level_t log_verboselevel;
+
+    hb_bool_t event_debugmode;
 } ch_grid_config_t;
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_grid_process_handle_t
@@ -69,23 +73,6 @@ typedef struct ch_grid_process_handle_t
     char response_data[CH_GRID_RESPONSE_DATA_MAX_SIZE];
 } ch_grid_process_handle_t;
 //////////////////////////////////////////////////////////////////////////
-typedef ch_http_code_t( *ch_request_func_t )(ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason);
-//////////////////////////////////////////////////////////////////////////
-typedef struct ch_grid_cmd_inittab_t
-{
-    const char * name;
-    ch_request_func_t request;
-} ch_grid_cmd_inittab_t;
-//////////////////////////////////////////////////////////////////////////
-extern ch_http_code_t ch_grid_request_insert( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason );
-extern ch_http_code_t ch_grid_request_select( ch_service_t * _service, const char * _project, const hb_json_handle_t * _json, char * _response, hb_size_t _capacity, hb_size_t * const _size, char * const _reason );
-//////////////////////////////////////////////////////////////////////////
-static ch_grid_cmd_inittab_t grid_cmds[] =
-{
-    {"insert", &ch_grid_request_insert},
-    {"select", &ch_grid_request_select},
-};
-//////////////////////////////////////////////////////////////////////////
 static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 {
     hb_time_t t_begin;
@@ -95,16 +82,12 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
     uint64_t request_id = process->request_enumerator++;
 
-    const char * host = evhttp_request_get_host( _request );
-    HB_UNUSED( host );
-
     const char * uri = evhttp_request_get_uri( _request );
 
-    HB_LOG_MESSAGE_INFO( "grid", "[%u:%" PRIu64 "] request uri: %s host: %s"
+    HB_LOG_MESSAGE_INFO( "grid", "[%u:%" PRIu64 "] request uri: %s"
         , process->id
         , request_id
         , uri
-        , host
     );
 
     struct evbuffer * output_buffer = evhttp_request_get_output_buffer( _request );
@@ -236,39 +219,9 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
         return;
     }
 
-    ch_service_t * service = process->service;
+    ch_grid_request_func_t request_func = ch_grid_request_get( cmd_name );
 
-    hb_bool_t cmd_found = HB_FALSE;
-
-    for( ch_grid_cmd_inittab_t
-        * cmd_inittab = grid_cmds,
-        *cmd_inittab_end = grid_cmds + sizeof( grid_cmds ) / sizeof( grid_cmds[0] );
-        cmd_inittab != cmd_inittab_end;
-        ++cmd_inittab )
-    {
-        if( strcmp( cmd_inittab->name, cmd_name ) != 0 )
-        {
-            continue;
-        }
-
-        hb_json_handle_t * json_handle;
-        if( hb_http_get_request_json( _request, process->request_data, sizeof( process->request_data ), &json_handle ) == HB_FAILURE )
-        {
-            evhttp_send_reply( _request, HTTP_BADREQUEST, "invalid get request json", output_buffer );
-
-            return;
-        }
-
-        response_code = (*cmd_inittab->request)(service, project, json_handle, process->response_data, sizeof( process->response_data ), &response_data_size, response_reason);
-
-        hb_json_free( json_handle );
-
-        cmd_found = HB_TRUE;
-
-        break;
-    }
-
-    if( cmd_found == HB_FALSE )
+    if( request_func == HB_NULLPTR )
     {
         snprintf( response_reason, CH_GRID_REASON_MAX_SIZE, "invalid found cmd '%s'", cmd_name );
 
@@ -276,6 +229,41 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
 
         return;
     }
+
+    hb_json_handle_t * json_handle;
+    if( hb_http_get_request_json( _request, process->request_data, sizeof( process->request_data ), &json_handle ) == HB_FAILURE )
+    {
+        evhttp_send_reply( _request, HTTP_BADREQUEST, "invalid get request json", output_buffer );
+
+        return;
+    }
+
+    if( hb_log_check_verbose_level( HB_LOG_DEBUG ) == HB_TRUE )
+    {
+        char json_dumps[HB_DATA_MAX_SIZE] = {'\0'};
+        if( hb_json_dumps( json_handle, json_dumps, HB_DATA_MAX_SIZE, HB_NULLPTR ) == HB_SUCCESSFUL )
+        {
+            HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] request data: %s"
+                , process->id
+                , request_id
+                , json_dumps
+            );
+        }
+    }
+
+    ch_grid_request_args_t args;
+    args.process_id = process->id;
+    args.request_id = request_id;
+    args.service = process->service;
+    args.project = project;
+    args.json = json_handle;
+    args.response = process->response_data;
+    args.response_size = &response_data_size;
+    args.reason = response_reason;
+
+    response_code = (*request_func)(&args);
+
+    hb_json_free( json_handle );
 
     if( evbuffer_add( output_buffer, process->response_data, response_data_size ) != 0 )
     {
@@ -398,6 +386,29 @@ static void __ch_memory_free( const void * _ptr, void * _ud )
     free( (void *)_ptr );
 }
 //////////////////////////////////////////////////////////////////////////
+static void __event_log_debug( int _severity, const char * _msg )
+{
+    switch( _severity )
+    {
+    case EVENT_LOG_DEBUG:
+        { 
+            hb_log_message( "libevent", HB_LOG_DEBUG, HB_NULLPTR, 0, "%s", _msg );
+        }break;
+    case EVENT_LOG_MSG:
+        {
+            hb_log_message( "libevent", HB_LOG_INFO, HB_NULLPTR, 0, "%s", _msg );
+        }break;
+    case EVENT_LOG_WARN:
+        {
+            hb_log_message( "libevent", HB_LOG_WARNING, HB_NULLPTR, 0, "%s", _msg );
+        }break;
+    case EVENT_LOG_ERR:
+        {
+            hb_log_message( "libevent", HB_LOG_ERROR, HB_NULLPTR, 0, "%s", _msg );
+        }break;
+    }
+}
+//////////////////////////////////////////////////////////////////////////
 static void __event_log( int _severity, const char * _msg )
 {
     switch( _severity )
@@ -422,6 +433,29 @@ static void __event_fatal( int err )
     HB_LOG_MESSAGE_ERROR( "grid", "libevent fatal error: %d"
         , err
     );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __ch_grid_config_boolean( int _argc, char * _argv[], const char * _env, const char * _key, hb_bool_t * const _value, hb_bool_t _default )
+{
+    int64_t arg = -1;
+    hb_getopti( _argc, _argv, _key, &arg );
+
+    if( arg != -1 )
+    {
+        *_value = (hb_bool_t)arg;
+    }
+    else
+    {
+        int64_t env = -1;
+        if( hb_getenvi( _env, &env ) == HB_SUCCESSFUL )
+        {
+            *_value = (hb_bool_t)env;
+        }
+        else
+        {
+            *_value = _default;
+        }
+    }
 }
 //////////////////////////////////////////////////////////////////////////
 static void __ch_grid_config_u16( int _argc, char * _argv[], const char * _env, const char * _key, uint16_t * const _value, uint16_t _default )
@@ -515,6 +549,47 @@ static void __ch_grid_config_string( int _argc, char * _argv[], const char * _en
     }
 }
 //////////////////////////////////////////////////////////////////////////
+static hb_result_t __ch_grid_config_verboselevel( int _argc, char * _argv[], const char * _env, const char * _key, hb_log_level_t * const _value, hb_log_level_t _default )
+{
+    const char * arg = HB_NULLPTR;
+    hb_getopt( _argc, _argv, _key, &arg );
+
+    if( arg != HB_NULLPTR )
+    {
+        if( hb_log_level_parse( arg, _value ) == HB_FAILURE )
+        {
+            HB_LOG_MESSAGE_CRITICAL( "grid", "invalid verboselevel arg '%s' value '%s'"
+                , _key
+                , arg
+            );
+
+            return HB_FAILURE;
+        }
+    }
+    else
+    {
+        char env_value[16] = {'\0'};
+        if( hb_getenv( _env, env_value, 16 ) == HB_SUCCESSFUL )
+        {
+            if( hb_log_level_parse( env_value, _value ) == HB_FAILURE )
+            {
+                HB_LOG_MESSAGE_CRITICAL( "grid", "invalid verboselevel env '%s' value '%s'"
+                    , _env
+                    , env_value
+                );
+
+                return HB_FAILURE;
+            }
+        }
+        else
+        {
+            *_value = _default;
+        }
+    }
+
+    return HB_SUCCESSFUL;
+}
+//////////////////////////////////////////////////////////////////////////
 int main( int _argc, char * _argv[] )
 {
     HB_UNUSED( _argc );
@@ -574,6 +649,13 @@ int main( int _argc, char * _argv[] )
 #endif
 
     __ch_grid_config_string( _argc, _argv, "CACHALOT__LOG_FILE", "--log_file", config->log_file, sizeof( config->log_file ), default_log_file );
+    
+    if( __ch_grid_config_verboselevel( _argc, _argv, "CACHALOT__LOG_VERBOSELEVEL", "--log_verboselevel", &config->log_verboselevel, HB_LOG_INFO ) == HB_FAILURE )
+    {
+        return EXIT_FAILURE;
+    }
+
+    __ch_grid_config_boolean( _argc, _argv, "CACHALOT__EVENT_DEBUGMODE", "--event_debugmode", &config->event_debugmode, HB_FALSE );
 
     if( config_file != HB_NULLPTR )
     {
@@ -612,8 +694,24 @@ int main( int _argc, char * _argv[] )
         hb_json_copy_field_string( json_handle, "name", config->name, sizeof( config->name ) );
         hb_json_copy_field_string( json_handle, "log_file", config->log_file, sizeof( config->log_file ) );
 
+        char log_verboselevel[16] = {'\0'};
+        if( hb_json_copy_field_string( json_handle, "log_verboselevel", log_verboselevel, sizeof( log_verboselevel ) ) == HB_SUCCESSFUL )
+        {
+            if( hb_log_level_parse( log_verboselevel, &config->log_verboselevel ) == HB_FAILURE )
+            {
+                HB_LOG_MESSAGE_CRITICAL( "grid", "config file '%s' invalid log_verboselevel '%s'"
+                    , config_file
+                    , log_verboselevel
+                );
+
+                return EXIT_FAILURE;
+            }
+        }
+
+        hb_json_get_field_boolean( json_handle, "event_debugmode", &config->event_debugmode );
+
         hb_json_free( json_handle );
-    }
+    }    
 
     size_t token_size = strlen( config->token );
 
@@ -651,6 +749,10 @@ int main( int _argc, char * _argv[] )
     HB_LOG_MESSAGE_INFO( "grid", "log_file: %s", config->log_file );
     HB_LOG_MESSAGE_INFO( "grid", "------------------------------------" );
 
+    HB_LOG_MESSAGE_DEBUG( "grid", "initialize.." );
+
+    hb_log_set_verbose_level( config->log_verboselevel );
+
     ch_service_t * service;
     if( ch_service_create( &service, config->max_record, config->max_time ) == HB_FAILURE )
     {
@@ -661,8 +763,17 @@ int main( int _argc, char * _argv[] )
         return EXIT_FAILURE;
     }
 
-    event_enable_debug_logging( EVENT_DBG_ALL );
-    event_set_log_callback( &__event_log );
+    if( config->event_debugmode == HB_TRUE )
+    {
+        event_enable_debug_logging( EVENT_DBG_ALL );
+        event_set_log_callback( &__event_log_debug );
+    }
+    else
+    {
+        event_enable_debug_logging( EVENT_DBG_NONE );
+        event_set_log_callback( &__event_log );
+    }
+
     event_set_fatal_callback( &__event_fatal );
 
     hb_mutex_handle_t * mutex_ev_socket;

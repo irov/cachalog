@@ -12,6 +12,9 @@ src
     ch_service.h
     ch_service.c
     
+    ch_grid_request.h
+    ch_grid_request.c
+    
     ch_grid_request_insert.c
     ch_grid_request_select.c
 )
