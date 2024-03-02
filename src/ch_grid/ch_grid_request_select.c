@@ -61,8 +61,10 @@ typedef struct ch_records_filter_t
     hb_json_string_t os_version;
 
     hb_size_t attributes_count;
-
     ch_records_filter_attribute_t attributes[CH_RECORD_ATTRIBUTES_MAX];
+
+    hb_size_t tags_count;
+    hb_json_string_t tags[CH_RECORD_TAGS_MAX];
 } ch_records_filter_t;
 //////////////////////////////////////////////////////////////////////////
 typedef struct ch_records_visitor_select_t
@@ -72,9 +74,6 @@ typedef struct ch_records_visitor_select_t
     hb_json_string_t search;
     hb_bool_t search_is_integer;
     uint64_t search_integer;
-
-    hb_size_t tags_count;
-    hb_json_string_t tags[CH_RECORD_TAGS_MAX];
 
     char * response;
     hb_size_t capacity;
@@ -410,11 +409,11 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
     }
 
-    if( ud->tags_count != 0 && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
+    if( ud->filter.tags_count != 0 && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
     {
-        for( hb_size_t tags_index = 0; tags_index != ud->tags_count; ++tags_index )
+        for( hb_size_t tags_index = 0; tags_index != ud->filter.tags_count; ++tags_index )
         {
-            hb_json_string_t tag_value = ud->tags[tags_index];
+            hb_json_string_t tag_value = ud->filter.tags[tags_index];
 
             if( __ch_service_records_filter_tag( tag_value, _record ) == HB_FALSE )
             {
@@ -668,8 +667,15 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
     hb_json_get_field_uint64( _args->json, "time.limit", &time_limit );
     hb_json_get_field_size_t( _args->json, "count.limit", &count_limit );
 
-    ch_records_visitor_select_t ud;
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] select time.offset %" PRIu64 " time.limit %" PRIu64 " count.limit %u"
+        , _args->process_id
+        , _args->request_id
+        , time_offset
+        , time_limit
+        , count_limit
+    );
 
+    ch_records_visitor_select_t ud;
     ud.filter.flags = CH_RECORD_ATTRIBUTE_NONE;
 
     const hb_json_handle_t * json_filter = HB_NULLPTR;
@@ -696,11 +702,11 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_OS_FAMILY, json_filter, "os.family", &ud.filter.os_family );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_OS_VERSION, json_filter, "os.version", &ud.filter.os_version );
 
+        ud.filter.attributes_count = 0;
+
         const hb_json_handle_t * json_attributes;
         if( hb_json_get_field( json_filter, "attributes", &json_attributes ) == HB_SUCCESSFUL )
         {
-            ud.filter.flags |= CH_GET_RECORD_FLAG( CH_RECORD_ATTRIBUTE_ATTRIBUTES );
-
             if( hb_json_is_array( json_attributes ) == HB_FALSE )
             {
                 snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes is not array" );
@@ -710,19 +716,24 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
 
             hb_size_t attributes_count = hb_json_get_array_size( json_attributes );
 
+            if( attributes_count != 0 )
+            {
+                ud.filter.flags |= CH_GET_RECORD_FLAG( CH_RECORD_ATTRIBUTE_ATTRIBUTES );
+            }
+
             for( hb_size_t index = 0; index != attributes_count; ++index )
             {
                 const hb_json_handle_t * json_attribute;
                 if( hb_json_array_get_element( json_attributes, index, &json_attribute ) == HB_FAILURE )
                 {
-                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u] is not object", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu] is not object", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
 
                 if( hb_json_get_field_string( json_attribute, "name", &ud.filter.attributes[index].name ) == HB_FAILURE )
                 {
-                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].name is not string", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu].name is not string", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
@@ -730,7 +741,7 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
                 const hb_json_handle_t * attribute_value;
                 if( hb_json_get_field( json_attribute, "value", &attribute_value ) == HB_FAILURE )
                 {
-                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not found", index );
+                    snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu].value is not found", index );
 
                     return CH_HTTP_BADREQUEST;
                 }
@@ -743,33 +754,41 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
                 {
                 case e_hb_json_false:
                     {
+                        filter_attribute->type = e_records_attributes_boolean;
+
                         filter_attribute->value_boolean = HB_FALSE;
                     }break;
                 case e_hb_json_true:
                     {
+                        filter_attribute->type = e_records_attributes_boolean;
+
                         filter_attribute->value_boolean = HB_TRUE;
                     }break;
                 case e_hb_json_integer:
                     {
+                        filter_attribute->type = e_records_attributes_integer;
+
                         if( hb_json_get_field_uint64( json_attribute, "value", &filter_attribute->value_integer ) == HB_FAILURE )
                         {
-                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu].value is not string", index );
 
                             return CH_HTTP_BADREQUEST;
                         }
                     }break;
                 case e_hb_json_string:
                     {
+                        filter_attribute->type = e_records_attributes_string;
+
                         if( hb_json_get_field_string( json_attribute, "value", &filter_attribute->value_string ) == HB_FAILURE )
                         {
-                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not string", index );
+                            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu].value is not string", index );
 
                             return CH_HTTP_BADREQUEST;
                         }
                     }break;
                 default:
                     {
-                        snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%u].value is not boolean, integer or string", index );
+                        snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.attributes[%zu].value is not boolean, integer or string", index );
 
                         return CH_HTTP_BADREQUEST;
                         break;
@@ -780,11 +799,17 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
             ud.filter.attributes_count = attributes_count;
         }
 
+        HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] select accept attributes count: %zu"
+            , _args->process_id
+            , _args->request_id
+            , ud.filter.attributes_count
+        );
+
+        ud.filter.tags_count = 0;
+
         const hb_json_handle_t * json_tags;
         if( hb_json_get_field( json_filter, "tags", &json_tags ) == HB_SUCCESSFUL )
         {
-            ud.filter.flags |= CH_GET_RECORD_FLAG( CH_RECORD_ATTRIBUTE_TAGS );
-
             if( hb_json_is_array( json_tags ) == HB_FALSE )
             {
                 snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.tags is not array" );
@@ -793,6 +818,11 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
             }
 
             hb_size_t tags_count = hb_json_get_array_size( json_tags );
+
+            if( tags_count != 0 )
+            {
+                ud.filter.flags |= CH_GET_RECORD_FLAG( CH_RECORD_ATTRIBUTE_TAGS );
+            }
 
             for( hb_size_t index = 0; index != tags_count; ++index )
             {
@@ -804,7 +834,7 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
                     return CH_HTTP_BADREQUEST;
                 }
 
-                if( hb_json_to_string( json_tag, &ud.tags[index] ) == HB_FAILURE )
+                if( hb_json_to_string( json_tag, &ud.filter.tags[index] ) == HB_FAILURE )
                 {
                     snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "filter.tags[%u] is not string", index );
 
@@ -812,9 +842,21 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
                 }
             }
 
-            ud.tags_count = tags_count;
+            ud.filter.tags_count = tags_count;
         }
+
+        HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] select accept tags count: %zu"
+            , _args->process_id
+            , _args->request_id
+            , ud.filter.tags_count
+        );
     }
+
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] select accept filter flags: %" PRIu64 ""
+        , _args->process_id
+        , _args->request_id
+        , ud.filter.flags
+    );
 
     ud.search.value = HB_NULLPTR;
     ud.search.size = 0;
@@ -824,45 +866,23 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
     const hb_json_handle_t * json_search;
     if( hb_json_get_field( _args->json, "search", &json_search ) == HB_SUCCESSFUL )
     {
-        hb_json_to_string( json_search, &ud.search );
-
-        ud.search_is_integer = __strntoull( ud.search.value, ud.search.size, &ud.search_integer );
-    }
-
-    ud.tags_count = 0;
-
-    const hb_json_handle_t * json_tags;
-    if( hb_json_get_field( _args->json, "tags", &json_tags ) == HB_SUCCESSFUL )
-    {
-        if( hb_json_is_array( json_tags ) == HB_FALSE )
+        if( hb_json_to_string( json_search, &ud.search ) == HB_FAILURE )
         {
-            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "tags is not array" );
+            snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "search is not string" );
 
             return CH_HTTP_BADREQUEST;
         }
 
-        hb_size_t tags_count = hb_json_get_array_size( json_tags );
-
-        for( hb_size_t index = 0; index != tags_count; ++index )
-        {
-            const hb_json_handle_t * json_tag;
-            if( hb_json_array_get_element( json_tags, index, &json_tag ) == HB_FAILURE )
-            {
-                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "invalid get element tags[%u]", index );
-
-                return CH_HTTP_BADREQUEST;
-            }
-
-            if( hb_json_to_string( json_tag, &ud.tags[index] ) == HB_FAILURE )
-            {
-                snprintf( _args->reason, CH_GRID_REASON_MAX_SIZE, "tags[%u] is not string", index );
-
-                return CH_HTTP_BADREQUEST;
-            }
-        }
-
-        ud.tags_count = tags_count;
+        ud.search_is_integer = __strntoull( ud.search.value, ud.search.size, &ud.search_integer );
     }
+
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] select accept search value: %.*s integer: %" PRIu64 ""
+        , _args->process_id
+        , _args->request_id
+        , ud.search.size
+        , ud.search.value
+        , ud.search_is_integer == HB_TRUE ? ud.search_integer : ~0ULL
+    );
 
     ud.response = _args->response;
     ud.capacity = CH_GRID_RESPONSE_DATA_MAX_SIZE;
