@@ -48,8 +48,11 @@ typedef enum ch_record_attributes_flag_e
     CH_RECORD_ATTRIBUTE_TAGS,
 } ch_record_attributes_flag_e;
 
-#define CH_GET_RECORD_FLAG(TAG) (1LL << TAG)
+typedef uint64_t ch_record_attributes_flag_t;
+
+#define CH_GET_RECORD_FLAG(TAG) (1ULL << TAG)
 #define CH_HAS_RECORD_FLAG(FLAG, TAG) ((FLAG & CH_GET_RECORD_FLAG(TAG)) == CH_GET_RECORD_FLAG(TAG))
+#define CH_MISS_RECORD_FLAG(FLAG, TAG) ((FLAG & CH_GET_RECORD_FLAG(TAG)) != CH_GET_RECORD_FLAG(TAG))
 
 typedef struct ch_record_t
 {

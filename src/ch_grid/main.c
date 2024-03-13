@@ -241,7 +241,7 @@ static void __ch_grid_request( struct evhttp_request * _request, void * _ud )
     if( hb_log_check_verbose_level( HB_LOG_DEBUG ) == HB_TRUE )
     {
         char json_dumps[HB_DATA_MAX_SIZE] = {'\0'};
-        if( hb_json_dumps( json_handle, json_dumps, HB_DATA_MAX_SIZE, HB_NULLPTR ) == HB_SUCCESSFUL )
+        if( hb_json_dump( json_handle, json_dumps, HB_DATA_MAX_SIZE, HB_NULLPTR ) == HB_SUCCESSFUL )
         {
             HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] request data: %s"
                 , process->id
@@ -618,11 +618,11 @@ int main( int _argc, char * _argv[] )
     }
 #endif
 
-    const char * config_file = HB_NULLPTR;
-    hb_getopt( _argc, _argv, "--config", &config_file );
+    char config_file[HB_MAX_PATH] = {'\0'};
 
     ch_grid_config_t * config = HB_NEW( ch_grid_config_t );
 
+    __ch_grid_config_string( _argc, _argv, "CACHALOT__CONFIG", "--config", config_file, sizeof( config_file ), "" );
     __ch_grid_config_u32( _argc, _argv, "CACHALOT__MAX_THREAD", "--max_thread", &config->max_thread, 16 );
     __ch_grid_config_u32( _argc, _argv, "CACHALOT__MAX_RECORD", "--max_record", &config->max_record, 10000 );
     __ch_grid_config_u64( _argc, _argv, "CACHALOT__MAX_TIME", "--max_time", &config->max_time, HB_TIME_SECONDS_IN_WEEK );
@@ -631,7 +631,7 @@ int main( int _argc, char * _argv[] )
     __ch_grid_config_string( _argc, _argv, "CACHALOT__TOKEN", "--token", config->token, sizeof( config->token ), "" );
     __ch_grid_config_string( _argc, _argv, "CACHALOT__NAME", "--name", config->name, sizeof( config->name ), "hb" );
 
-    char default_log_file[HB_MAX_PATH];
+    char default_log_file[HB_MAX_PATH] = {'\0'};
 
 #ifndef HB_DEBUG
     strcpy( default_log_file, "" );
@@ -657,8 +657,12 @@ int main( int _argc, char * _argv[] )
 
     __ch_grid_config_boolean( _argc, _argv, "CACHALOT__EVENT_DEBUGMODE", "--event_debugmode", &config->event_debugmode, HB_FALSE );
 
-    if( config_file != HB_NULLPTR )
+    if( strlen( config_file ) != 0 )
     {
+        HB_LOG_MESSAGE_INFO( "grid", "load grid config: %s"
+            , config_file
+        );
+
         char config_buffer[HB_DATA_MAX_SIZE];
         hb_size_t config_size;
         if( hb_file_read_text( config_file, config_buffer, HB_DATA_MAX_SIZE, &config_size ) == HB_FAILURE )

@@ -580,47 +580,52 @@ hb_result_t ch_service_get_tag( ch_service_t * _service, hb_time_t _timestamp, c
 //////////////////////////////////////////////////////////////////////////
 void ch_service_select_records( ch_service_t * _service, const char * _project, hb_time_t _timestamp, hb_time_t _timeoffset, hb_time_t _timelimit, hb_size_t _countlimit, ch_service_records_visitor_t _visitor, void * _ud )
 {
+    if( _countlimit == 0 )
+    {
+        return;
+    }
+
     hb_mutex_lock( _service->records_mutex );
 
-    if( _service->records != HB_NULLPTR )
+    if( _service->records == HB_NULLPTR )
     {
-        uint64_t index = 0;
-        
-        HB_RING_FOREACH( base, ch_record_t, _service->records, record )
+        hb_mutex_unlock( _service->records_mutex );
+
+        return;
+    }
+
+    uint64_t index = 0;
+
+    HB_RING_FOREACH( base, ch_record_t, _service->records, record )
+    {
+        if( _timestamp - record->created_timestamp >= _service->timemax )
         {
-            if( _timestamp - record->created_timestamp >= _service->timemax )
-            {
-                break;
-            }
-
-            if( _timestamp - record->created_timestamp >= _timelimit )
-            {
-                break;
-            }
-
-            if( _timestamp - record->created_timestamp < _timeoffset )
-            {
-                record = HB_RING_GET_NEXT( base, record );
-
-                continue;
-            }
-
-            if( strncmp( record->project, _project, CH_PROJECT_MAXLEN ) != 0 )
-            {
-                record = HB_RING_GET_NEXT( base, record );
-
-                continue;
-            }
-
-            _visitor( index, record, _ud );
-
-            if( --_countlimit == 0 )
-            {
-                break;
-            }
-
-            ++index;
+            break;
         }
+
+        if( _timestamp - record->created_timestamp >= _timelimit )
+        {
+            break;
+        }
+
+        if( _timestamp - record->created_timestamp < _timeoffset )
+        {
+            continue;
+        }
+
+        if( strncmp( record->project, _project, CH_PROJECT_MAXLEN ) != 0 )
+        {
+            continue;
+        }
+
+        _visitor( index, record, _ud );
+
+        if( --_countlimit == 0 )
+        {
+            break;
+        }
+
+        ++index;
     }
 
     hb_mutex_unlock( _service->records_mutex );

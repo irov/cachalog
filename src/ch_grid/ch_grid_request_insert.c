@@ -429,7 +429,7 @@ static hb_result_t __records_visitor( hb_size_t _index, const hb_json_handle_t *
     if( hb_log_check_verbose_level( HB_LOG_DEBUG ) == HB_TRUE )
     {
         char value_dumps[HB_DATA_MAX_SIZE] = {'\0'};
-        if( hb_json_dumps( _value, value_dumps, sizeof( value_dumps ), HB_NULLPTR ) == HB_SUCCESSFUL )
+        if( hb_json_dump( _value, value_dumps, sizeof( value_dumps ), HB_NULLPTR ) == HB_SUCCESSFUL )
         {
             HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] visit record index: %zu data: %s"
                 , ud->process_id

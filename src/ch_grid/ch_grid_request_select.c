@@ -293,6 +293,88 @@ static hb_bool_t __ch_service_records_filter_string_arguments( hb_json_string_t 
     return HB_FALSE;
 }
 //////////////////////////////////////////////////////////////////////////
+static void __response_write_record_string( ch_records_visitor_select_t * _ud, const ch_record_t * _record, ch_record_attributes_flag_e _flag, const char * _name, const char * _value )
+{
+    if( CH_MISS_RECORD_FLAG( _record->flags, _flag ) )
+    {
+        return;
+    }
+
+    char string_buffer[CH_MESSAGE_TEXT_MAX * 2] = {'\0'};
+    hb_size_t string_size = 0;
+
+    hb_json_dump_string( _value, string_buffer, sizeof( string_buffer ), &string_size );
+
+    __response_write( _ud, ",\"%s\":\"%.*s\""
+        , _name
+        , string_size
+        , string_buffer
+    );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __response_write_stringi( ch_records_visitor_select_t * _ud, const char * _name, const char * _value )
+{
+    char string_buffer[CH_MESSAGE_TEXT_MAX * 2] = {'\0'};
+    hb_size_t string_size = 0;
+
+    hb_json_dump_string( _value, string_buffer, sizeof( string_buffer ), &string_size );
+
+    __response_write( _ud, "\"%s\":\"%.*s\""
+        , _name
+        , string_size
+        , string_buffer
+    );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __response_write_record_stringi( ch_records_visitor_select_t * _ud, const ch_record_t * _record, ch_record_attributes_flag_e _flag, const char * _name, const char * _value )
+{
+    if( CH_MISS_RECORD_FLAG( _record->flags, _flag ) )
+    {
+        return;
+    }
+
+    __response_write_stringi( _ud, _name, _value );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __response_write_record_integer32( ch_records_visitor_select_t * _ud, const ch_record_t * _record, ch_record_attributes_flag_e _flag, const char * _name, uint32_t _value )
+{
+    if( CH_MISS_RECORD_FLAG( _record->flags, _flag ) )
+    {
+        return;
+    }
+
+    __response_write( _ud, ",\"%s\":%" PRIu32 ""
+        , _name
+        , _value
+    );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __response_write_record_integer64( ch_records_visitor_select_t * _ud, const ch_record_t * _record, ch_record_attributes_flag_e _flag, const char * _name, uint64_t _value )
+{
+    if( CH_MISS_RECORD_FLAG( _record->flags, _flag ) )
+    {
+        return;
+    }
+
+    __response_write( _ud, ",\"%s\":%" PRIu64 ""
+        , _name
+        , _value
+    );
+}
+//////////////////////////////////////////////////////////////////////////
+static void __response_write_record_boolean( ch_records_visitor_select_t * _ud, const ch_record_t * _record, ch_record_attributes_flag_e _flag, const char * _name, hb_bool_t _value )
+{
+    if( CH_HAS_RECORD_FLAG( _record->flags, _flag ) == HB_FALSE )
+    {
+        return;
+    }
+
+    __response_write( _ud, ",\"%s\":%s"
+        , _name
+        , _value ? "true" : "false"
+    );
+}
+//////////////////////////////////////////////////////////////////////////
 static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t * _record, void * _ud )
 {
     ch_records_visitor_select_t * ud = (ch_records_visitor_select_t *)_ud;
@@ -409,8 +491,13 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         }
     }
 
-    if( ud->filter.tags_count != 0 && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
+    if( CH_HAS_RECORD_FLAG( ud->filter.flags, CH_RECORD_ATTRIBUTE_TAGS ) )
     {
+        if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) == HB_FALSE )
+        {
+            return;
+        }
+
         for( hb_size_t tags_index = 0; tags_index != ud->filter.tags_count; ++tags_index )
         {
             hb_json_string_t tag_value = ud->filter.tags[tags_index];
@@ -429,103 +516,20 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
 
     __response_write( ud, "{" );
 
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_USER_ID ) )
-    {
-        __response_write( ud, "\"user.id\":\"%s\""
-            , _record->user_id
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LEVEL ) )
-    {
-        __response_write( ud, ",\"level\":%" PRIu32 ""
-            , _record->level
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_SERVICE ) )
-    {
-        __response_write( ud, ",\"service\":\"%s\""
-            , _record->service
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_THREAD ) )
-    {
-        __response_write( ud, ",\"thread\":\"%s\""
-            , _record->thread
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_MESSAGE ) )
-    {
-        __response_write( ud, ",\"message\":\"%s\""
-            , _record->message->text
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TIMESTAMP ) )
-    {
-        __response_write( ud, ",\"timestamp\":%" PRIu64 ""
-            , _record->timestamp
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_LIVE ) )
-    {
-        __response_write( ud, ",\"live\":%" PRIu64 ""
-            , _record->live
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT ) )
-    {
-        __response_write( ud, ",\"build.environment\":\"%s\""
-            , _record->build_environment
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_RELEASE ) )
-    {
-        __response_write( ud, ",\"build.release\":%s"
-            , _record->build_release ? "true" : "false"
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_VERSION ) )
-    {
-        __response_write( ud, ",\"build.version\":\"%s\""
-            , _record->build_version
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_BUILD_NUMBER ) )
-    {
-        __response_write( ud, ",\"build.number\":%" PRIu64 ""
-            , _record->build_number
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_DEVICE_MODEL ) )
-    {
-        __response_write( ud, ",\"device.model\":\"%s\""
-            , _record->device_model
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_OS_FAMILY ) )
-    {
-        __response_write( ud, ",\"os.family\":\"%s\""
-            , _record->os_family
-        );
-    }
-
-    if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_OS_VERSION ) )
-    {
-        __response_write( ud, ",\"os.version\":\"%s\""
-            , _record->os_version
-        );
-    }
+    __response_write_record_stringi( ud, _record, CH_RECORD_ATTRIBUTE_USER_ID, "user.id", _record->user_id );
+    __response_write_record_integer32( ud, _record, CH_RECORD_ATTRIBUTE_LEVEL, "level", _record->level );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_SERVICE, "service", _record->service );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_THREAD, "thread", _record->thread );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_MESSAGE, "message", _record->message->text );
+    __response_write_record_integer64( ud, _record, CH_RECORD_ATTRIBUTE_TIMESTAMP, "timestamp", _record->timestamp );
+    __response_write_record_integer64( ud, _record, CH_RECORD_ATTRIBUTE_LIVE, "live", _record->live );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, "build.environment", _record->build_environment );
+    __response_write_record_boolean( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, "build.release", _record->build_release );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, "build.version", _record->build_version );
+    __response_write_record_integer64( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, "build.number", _record->build_number );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, "device.model", _record->device_model );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_OS_FAMILY, "os.family", _record->os_family );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_OS_VERSION, "os.version", _record->os_version );
 
     if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_ATTRIBUTES ) )
     {
@@ -556,10 +560,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
                 } break;
             case CH_ATTRIBUTE_TYPE_STRING:
                 {
-                    __response_write( ud, "\"%s\":\"%s\""
-                        , attribute->name
-                        , attribute->value_string
-                    );
+                    __response_write_stringi( ud, attribute->name, attribute->value_string );
                 } break;
             }
         }
