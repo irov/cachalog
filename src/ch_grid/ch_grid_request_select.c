@@ -52,6 +52,7 @@ typedef struct ch_records_filter_t
 
     hb_json_string_t build_environment;
     hb_bool_t build_release;
+    hb_json_string_t build_bundle;
     hb_json_string_t build_version;
     uint64_t build_number;
 
@@ -164,6 +165,11 @@ static hb_bool_t __ch_service_records_filter_search( hb_json_string_t _search, c
     }
 
     if( __hb_json_string_strstr( _search, _record->build_environment ) != HB_NULLPTR )
+    {
+        return HB_TRUE;
+    }
+
+    if( __hb_json_string_strstr( _search, _record->build_bundle ) != HB_NULLPTR )
     {
         return HB_TRUE;
     }
@@ -433,6 +439,11 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             return;
         }
 
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_BUILD_BUNDLE ) && __hb_json_string_strstr( filter->build_bundle, _record->build_bundle ) == HB_NULLPTR )
+        {
+            return;
+        }
+
         if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_BUILD_VERSION ) && __hb_json_string_strstr( filter->build_version, _record->build_version ) == HB_NULLPTR )
         {
             return;
@@ -525,6 +536,7 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
     __response_write_record_integer64( ud, _record, CH_RECORD_ATTRIBUTE_LIVE, "live", _record->live );
     __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, "build.environment", _record->build_environment );
     __response_write_record_boolean( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, "build.release", _record->build_release );
+    __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_BUNDLE, "build.bundle", _record->build_bundle );
     __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, "build.version", _record->build_version );
     __response_write_record_integer64( ud, _record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, "build.number", _record->build_number );
     __response_write_record_string( ud, _record, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, "device.model", _record->device_model );
@@ -697,6 +709,7 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
         __select_filter_get_field_uint64( &ud, CH_RECORD_ATTRIBUTE_LIVE, json_filter, "live", &ud.filter.live );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, json_filter, "build.environment", &ud.filter.build_environment );
         __select_filter_get_field_boolean( &ud, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, json_filter, "build.release", &ud.filter.build_release );
+        __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_BUILD_BUNDLE, json_filter, "build.bundle", &ud.filter.build_bundle );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_BUILD_VERSION, json_filter, "build.version", &ud.filter.build_version );
         __select_filter_get_field_uint64( &ud, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, json_filter, "build.number", &ud.filter.build_number );
         __select_filter_get_field_string( &ud, CH_RECORD_ATTRIBUTE_DEVICE_MODEL, json_filter, "device.model", &ud.filter.device_model );

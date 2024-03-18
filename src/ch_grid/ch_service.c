@@ -146,6 +146,7 @@ static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestam
     _record->live = 0;
     _record->build_environment[0] = '\0';
     _record->build_release = HB_FALSE;
+    _record->build_bundle[0] = '\0';
     _record->build_version[0] = '\0';
     _record->build_number = 0;
     _record->device_model[0] = '\0';
@@ -506,7 +507,7 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
 
         return HB_SUCCESSFUL;
     }
-    
+
     if( _timestamp - HB_RING_GET_PREV( base, _service->tags )->created_timestamp >= _service->timemax )
     {
         while( _timestamp - HB_RING_GET_PREV_PREV( base, _service->tags )->created_timestamp >= _service->timemax )

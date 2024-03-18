@@ -343,6 +343,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t 
 
     __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_ENVIRONMENT, _json, "build.environment", record->build_environment, sizeof( record->build_environment ) );
     __record_attribute_boolean( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_RELEASE, _json, "build.release", &record->build_release );
+    __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_BUNDLE, _json, "build.bundle", record->build_bundle, sizeof( record->build_bundle ) );
     __record_attribute_string( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_VERSION, _json, "build.version", record->build_version, sizeof( record->build_version ) );
     __record_attribute_uint64( _processId, _requestId, record, CH_RECORD_ATTRIBUTE_BUILD_NUMBER, _json, "build.number", &record->build_number );
 
