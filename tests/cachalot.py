@@ -1,7 +1,8 @@
 from urllib import request
 from urllib.error import HTTPError
 from urllib.error import URLError
-from socket import timeout as SocketTimeoutError;
+from socket import timeout as SocketTimeoutError
+
 import mimetypes
 import binascii
 import sys

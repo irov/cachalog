@@ -4,17 +4,18 @@ import sys
 import unittest
 import json
 import time
+import datetime
 import string
 
 import random
 import threading
 
-server = "http://localhost:5555"
+server = "https://hummingfab.com/api/grid"
 
 class Testing(unittest.TestCase):
     def __test(self):
-        token = "cb57466281a8f398aa63416b8b499978"
-        project = "TESTTMP"
+        token = "2fc7ed896db131dac9416c2e8df33726"
+        project = "TM-DEV"
     
         for i in range(500):
             rnd = random.randrange(0, 1696072383)
@@ -25,30 +26,28 @@ class Testing(unittest.TestCase):
             for j in range(random.randrange(1, 10)):
                 record = {}
                 record["user.id"] = "user{0}".format(i)
-                record["level"] = 3
+                record["level"] = random.randrange(1, 5)
                 record["service"] = "test"
                 record["message"] = ''.join(random.choices(string.ascii_lowercase, k=random.randrange(1, 50))) + "END1234567890_" + str(j)
-                record["file"] = "test.cpp"
-                record["line"] = 378
-                record["timestamp"] = int(time.time())
+                record["file"] = random.choice(["test.py", "main.py", "print.py", "cachalot.py", "gen.py"])
+                record["line"] = random.randint(1, 1000)
+                record["timestamp"] = int(datetime.datetime.now().timestamp())
                 record["live"] = 2383
-                record["build.environment"] = "dev"
+                record["build.environment"] = random.choice(["dev", "prod", "staging"])
                 record["build.release"] = True
-                record["build.version"] = "1.0.0"
+                record["build.version"] = random.choice(["1.0.0", "1.1.0-dev", "1.1.8-nightly"])
                 record["build.number"] = 12345
                 
-                record["device.model"] = "12345"
+                record["device.model"] = random.choice(["iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max"])
                 
-                record["os.family"] = "Android"
-                record["os.version"] = "12"
+                record["os.family"] = "TestOS"
+                record["os.version"] = random.choice(["12.0", "11.0", "10.4", "10.0"])
                 
                 record["attributes"] = {}
                 record["attributes"]["cik_value"] = "0697e656ca1824f5"
                 record["attributes"]["cik_timestamp"] = "1696072383"
                 
-                record["tags"] = []
-                record["tags"] += ["game"]
-                record["tags"] += ["food"]
+                record["tags"] = random.choices(["game", "food", "ai", "net", "service", "test"], k=random.randrange(0, 4))
                 
                 records.append(record)
             
@@ -77,7 +76,7 @@ class Testing(unittest.TestCase):
     
     def test_01_thread(self):
         threads = []
-        for index in range(64):
+        for index in range(32):
             x = threading.Thread(target=self.__test, args=())
             threads.append(x)
             x.start()
