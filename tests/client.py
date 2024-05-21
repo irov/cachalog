@@ -1,6 +1,6 @@
 """
 Signature:
-python mock_data.py --server="https://hummingfab.com/api/grid/" --token=12345678901234567890123456789012 --project="Project Name"
+python client.py --server="https://hummingfab.com/api/grid/" --token=12345678901234567890123456789012 --project="Project Name"
 
 Params (Can be set inside script):
     * server [OPTIONAL]: string as url - server url
@@ -15,18 +15,25 @@ DEFAULT_SERVER = "https://hummingfab.com/api/grid/"
 DEFAULT_TOKEN = "cb57466281a8f398aa63416b8b499978"
 DEFAULT_PROJECT = "TM-DEV"
 
+
 def get_os_name():
     os_name = platform.system().lower()
-    if os_name.startswith('cygwin') or os_name.startswith('mingw') or os_name.startswith('msys'):
-        return 'windows'
-    if os_name == 'linux':
-        return 'linux'
+    if (
+        os_name.startswith("cygwin")
+        or os_name.startswith("mingw")
+        or os_name.startswith("msys")
+    ):
+        return "windows"
+    if os_name == "linux":
+        return "linux"
 
     return os_name
 
-is_py2 = (sys.version_info[0] == 2)
-is_py3 = (sys.version_info[0] == 3)
-is_win = get_os_name() == 'windows'
+
+is_py2 = sys.version_info[0] == 2
+is_py3 = sys.version_info[0] == 3
+is_win = get_os_name() == "windows"
+
 
 class BaseError(Exception):
     pass
@@ -43,7 +50,7 @@ class InputParser:
         self.project = project
 
     @classmethod
-    def from_sys_args(cls):
+    def from_sys_args(cls) -> "InputParser":
         if "--help" in sys.argv or "-h" in sys.argv or len(sys.argv) < 2:
             print(__doc__)
             sys.exit(0)
@@ -99,4 +106,3 @@ class RuntimeEnv:
 if __name__ == "__main__":
     ip = InputParser.from_sys_args()
     re = RuntimeEnv(ip)
-
