@@ -1,14 +1,13 @@
 import os
+import unittest
+import threading
+# import multiprocessing
 
 from random import random
 from random import randrange
 from time import time
-import unittest
-import threading
 
-ENV = "pytest" if __name__.startswith("tests") else "python"
-
-if ENV == "pytest":
+if __name__.startswith("tests"):
     from . import cachalot
     from .conftest import SERVER, TOKEN, PROJECT
     from .record_fabric import LogRecordFabric
@@ -18,17 +17,16 @@ else:
     from record_fabric import LogRecordFabric
 
 
-LogFabric = LogRecordFabric()
-
 class TestCrashDuringLargeDataRequest(unittest.TestCase):
     def new_mock_datablock(self):
         data = {}
+        LogFabric = LogRecordFabric()
         data["records"] = [LogFabric.create(i) for i in range(randrange(1, 10))]
         return data
 
     def send_mock_data(self, get_stop_flag):
         data = self.new_mock_datablock()
-        for i in range(10):
+        for i in range(500):
             jresult = cachalot.post(
                 SERVER, "{0}/{1}/insert".format(TOKEN, PROJECT), **data
             )
@@ -37,30 +35,26 @@ class TestCrashDuringLargeDataRequest(unittest.TestCase):
                 break
 
     def test_sending_data(self):
-        print("ADDRESS: {}/{}/{}/insert".format(SERVER, TOKEN, PROJECT))
-        start_time = time()
         threads = []
         is_stop = False
-        for index in range(4):
+        # pool = multiprocessing.Pool(processes=8)
+        # pool.map(self.send_mock_data, [lambda: is_stop])
+        for _ in range(8):
             th = threading.Thread(target=self.send_mock_data, args=([lambda: is_stop]))
             threads.append(th)
             th.start()
 
         try:
+            # pool.join()
             for thread in threads:
                 thread.join()
         except KeyboardInterrupt:
             print("KeyboardInterrupt, stopping...")
             is_stop = True
 
-        print("SENDING_DATA_TIME: {0}".format(time() - start_time))
-
     def test_crash(self):
-        print("ADDRESS: {}/{}/{}/select".format(SERVER, TOKEN, PROJECT))
-        start_time = time()
-        data = {"count.limit": 3000}
-        cachalot.post(SERVER, "{0}/{1}/select".format(TOKEN, PROJECT), **data)
-        print("SENDING_DATA_TIME: {0}".format(time() - start_time))
+        select_data = {"count.limit": 300}
+        cachalot.post(SERVER, "{0}/{1}/select".format(TOKEN, PROJECT), **select_data)
 
 
 if __name__ == "__main__":
