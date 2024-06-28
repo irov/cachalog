@@ -255,17 +255,17 @@ static hb_bool_t __record_attribute_string( uint32_t _processId, uint64_t _reque
 //////////////////////////////////////////////////////////////////////////
 static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t _processId, uint64_t _requestId, ch_service_t * _service, const char * _project, char * const _reason )
 {
-    hb_time_t timestamp;
-    hb_time( &timestamp );
+    hb_time_t created_timestamp;
+    hb_time( &created_timestamp );
 
-    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] get record timestamp: %llu"
+    HB_LOG_MESSAGE_DEBUG( "grid", "[%u:%" PRIu64 "] get record created timestamp: %llu"
         , _processId
         , _requestId
-        , timestamp
+        , created_timestamp
     );
 
     ch_record_t * record;
-    if( ch_service_get_record( _service, timestamp, &record ) == HB_FAILURE )
+    if( ch_service_get_record( _service, created_timestamp, &record ) == HB_FAILURE )
     {
         snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get record" );
 
@@ -320,7 +320,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t 
         }
 
         ch_message_t * message;
-        if( ch_service_get_message( _service, timestamp, message_string.value, message_string.size, &message ) == HB_FAILURE )
+        if( ch_service_get_message( _service, created_timestamp, message_string.value, message_string.size, &message ) == HB_FAILURE )
         {
             snprintf( _reason, CH_GRID_REASON_MAX_SIZE, "invalid get message" );
 
@@ -365,7 +365,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t 
         json_foreach_ud_t ud;
         ud.service = _service;
         ud.record = record;
-        ud.timestamp = timestamp;
+        ud.timestamp = created_timestamp;
         ud.reason = _reason;
 
         if( hb_json_visit_object( json_attributes, &__ch_grid_json_attributes_visitor, &ud ) == HB_FAILURE )
@@ -392,7 +392,7 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t 
         json_foreach_ud_t ud;
         ud.service = _service;
         ud.record = record;
-        ud.timestamp = timestamp;
+        ud.timestamp = created_timestamp;
         ud.reason = _reason;
 
         if( hb_json_visit_array( json_tags, &__ch_grid_json_tags_visitor, &ud ) == HB_FAILURE )
@@ -405,6 +405,8 @@ static ch_http_code_t __record_insert( const hb_json_handle_t * _json, uint32_t 
             record->flags |= 1LL << CH_RECORD_ATTRIBUTE_TAGS;
         }
     }
+
+    record->created_timestamp = created_timestamp;
 
     return CH_HTTP_OK;
 }

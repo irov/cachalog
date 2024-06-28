@@ -282,6 +282,40 @@ static hb_bool_t __ch_service_records_filter_tag( hb_json_string_t _tag, const c
     return HB_FALSE;
 }
 //////////////////////////////////////////////////////////////////////////
+static hb_bool_t __ch_service_records_filter_boolean_arguments( hb_json_string_t _name, hb_bool_t _value, const ch_record_t * _record )
+{
+    HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
+    {
+        if( attribute->value_type != CH_ATTRIBUTE_TYPE_BOOLEAN ||
+            __hb_json_string_strstr( _name, attribute->name ) == HB_NULLPTR ||
+            attribute->value_boolean == _value )
+        {
+            continue;
+        }
+
+        return HB_TRUE;
+    }
+
+    return HB_FALSE;
+}
+//////////////////////////////////////////////////////////////////////////
+static hb_bool_t __ch_service_records_filter_integer_arguments( hb_json_string_t _name, uint64_t _value, const ch_record_t * _record )
+{
+    HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
+    {
+        if( attribute->value_type != CH_ATTRIBUTE_TYPE_INTEGER ||
+            __hb_json_string_strstr( _name, attribute->name ) == HB_NULLPTR ||
+            attribute->value_integer == _value )
+        {
+            continue;
+        }
+
+        return HB_TRUE;
+    }
+
+    return HB_FALSE;
+}
+//////////////////////////////////////////////////////////////////////////
 static hb_bool_t __ch_service_records_filter_string_arguments( hb_json_string_t _name, hb_json_string_t _value, const ch_record_t * _record )
 {
     HB_RING_FOREACH( record, ch_attribute_t, _record->attributes, attribute )
@@ -381,7 +415,7 @@ static void __response_write_record_boolean( ch_records_visitor_select_t * _ud, 
     );
 }
 //////////////////////////////////////////////////////////////////////////
-static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t * _record, void * _ud )
+static void __ch_service_records_visitor( uint64_t _index, const ch_record_t * _record, void * _ud )
 {
     ch_records_visitor_select_t * ud = (ch_records_visitor_select_t *)_ud;
 
@@ -475,12 +509,42 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
             {
                 const ch_records_filter_attribute_t * attribute = filter->attributes + attributes_index;
 
-                if( attribute->type == e_records_attributes_string )
+                switch( attribute->type )
                 {
-                    if( __ch_service_records_filter_string_arguments( attribute->name, attribute->value_string, _record ) == HB_FALSE )
+                case e_records_attributes_boolean:
                     {
-                        return;
-                    }
+                        if( __ch_service_records_filter_boolean_arguments( attribute->name, attribute->value_boolean, _record ) == HB_FALSE )
+                        {
+                            return;
+                        }
+                    }break;
+                case e_records_attributes_integer:
+                    {
+                        if( __ch_service_records_filter_integer_arguments( attribute->name, attribute->value_integer, _record ) == HB_FALSE )
+                        {
+                            return;
+                        }
+                    }break;
+                case e_records_attributes_string:
+                    {
+                        if( __ch_service_records_filter_string_arguments( attribute->name, attribute->value_string, _record ) == HB_FALSE )
+                        {
+                            return;
+                        }
+                    }break;
+                }                    
+            }
+        }
+
+        if( CH_HAS_RECORD_FLAG( filter->flags, CH_RECORD_ATTRIBUTE_TAGS ) && CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) )
+        {
+            for( hb_size_t tags_index = 0; tags_index != filter->tags_count; ++tags_index )
+            {
+                hb_json_string_t tag_value = filter->tags[tags_index];
+
+                if( __ch_service_records_filter_tag( tag_value, _record ) == HB_FALSE )
+                {
+                    return;
                 }
             }
         }
@@ -496,24 +560,6 @@ static void __ch_service_records_visitor_t( uint64_t _index, const ch_record_t *
         if( ud->search_is_integer == HB_TRUE )
         {
             if( __ch_service_records_filter_search_integer( ud->search_integer, _record ) == HB_FALSE )
-            {
-                return;
-            }
-        }
-    }
-
-    if( CH_HAS_RECORD_FLAG( ud->filter.flags, CH_RECORD_ATTRIBUTE_TAGS ) )
-    {
-        if( CH_HAS_RECORD_FLAG( _record->flags, CH_RECORD_ATTRIBUTE_TAGS ) == HB_FALSE )
-        {
-            return;
-        }
-
-        for( hb_size_t tags_index = 0; tags_index != ud->filter.tags_count; ++tags_index )
-        {
-            hb_json_string_t tag_value = ud->filter.tags[tags_index];
-
-            if( __ch_service_records_filter_tag( tag_value, _record ) == HB_FALSE )
             {
                 return;
             }
@@ -904,7 +950,7 @@ ch_http_code_t ch_grid_request_select( const ch_grid_request_args_t * _args )
 
     __response_write( &ud, "{\"project\":\"%s\",\"records\":[", _args->project );
 
-    ch_service_select_records( _args->service, _args->project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor_t, &ud );
+    ch_service_select_records( _args->service, _args->project, timestamp, time_offset, time_limit, count_limit, &__ch_service_records_visitor, &ud );
 
     __response_write( &ud, "]}" );
 

@@ -8,5 +8,7 @@
   
   "token": "cb57466281a8f398aa63416b8b499978",
   
-  "name": "cachalot"
+  "name": "cachalot",
+  
+  "log_verboselevel": "debug"
 }

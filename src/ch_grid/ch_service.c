@@ -130,10 +130,9 @@ hb_result_t ch_service_create( ch_service_t ** _service, uint32_t _capacity, hb_
     return HB_SUCCESSFUL;
 }
 //////////////////////////////////////////////////////////////////////////
-static void __ch_service_init_record( ch_record_t * _record, hb_time_t _timestamp, uint64_t _id )
+static void __ch_service_init_record( ch_record_t * _record, uint64_t _id )
 {
-    hb_time( &_record->created_timestamp );
-    _record->created_timestamp = _timestamp;
+    _record->created_timestamp = 0;
     _record->id = _id;
     _record->flags = CH_RECORD_ATTRIBUTE_NONE;
     _record->project[0] = '\0';
@@ -161,20 +160,19 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
 {
     if( _service->records == HB_NULLPTR )
     {
-        ch_record_t * record = HB_NEW( ch_record_t );
+        ch_record_t * new_record = HB_NEW( ch_record_t );
 
-        if( record == HB_NULLPTR )
+        if( new_record == HB_NULLPTR )
         {
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( base, record );
+        HB_RING_INIT( base, new_record );
 
-        _service->records = record;
+        _service->records = new_record;
+        _service->records_count = 1;
 
-        ++_service->records_count;
-
-        *_record = record;
+        *_record = new_record;
 
         return HB_SUCCESSFUL;
     }
@@ -187,16 +185,14 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
             {
                 break;
             }
-            else
-            {
-                --_service->records_count;
 
-                ch_record_t * old_record = HB_RING_GET_PREV( base, _service->records );
+            --_service->records_count;
 
-                HB_RING_REMOVE( base, old_record );
+            ch_record_t * old_record = HB_RING_GET_PREV( base, _service->records );
 
-                HB_FREE( old_record );
-            }
+            HB_RING_REMOVE( base, old_record );
+
+            HB_FREE( old_record );
         }
 
         ch_record_t * record = HB_RING_GET_PREV( base, _service->records );
@@ -217,19 +213,19 @@ static hb_result_t __ch_service_unmutex_get_record( ch_service_t * _service, hb_
         return HB_SUCCESSFUL;
     }
 
-    ch_record_t * record = HB_NEW( ch_record_t );
+    ch_record_t * new_record = HB_NEW( ch_record_t );
 
-    if( record == HB_NULLPTR )
+    if( new_record == HB_NULLPTR )
     {
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( base, _service->records, record );
-    _service->records = record;
+    HB_RING_PUSH_BACK( base, _service->records, new_record );
+    _service->records = new_record;
 
     ++_service->records_count;
 
-    *_record = record;
+    *_record = new_record;
 
     return HB_SUCCESSFUL;
 }
@@ -244,7 +240,7 @@ hb_result_t ch_service_get_record( ch_service_t * _service, hb_time_t _timestamp
     {
         uint64_t id = ++_service->records_enumerator;
 
-        __ch_service_init_record( *_record, _timestamp, id );
+        __ch_service_init_record( *_record, id );
     }
 
     hb_mutex_unlock( _service->records_mutex );
@@ -272,22 +268,21 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
 
     if( _service->messages[index] == HB_NULLPTR )
     {
-        ch_message_t * message = HB_NEWE( ch_message_t, capacity );
+        ch_message_t * new_message = HB_NEWE( ch_message_t, capacity );
 
-        if( message == HB_NULLPTR )
+        if( new_message == HB_NULLPTR )
         {
             return HB_FAILURE;
         }
 
-        message->capacity = capacity;
+        new_message->capacity = capacity;
 
-        HB_RING_INIT( base, message );
+        HB_RING_INIT( base, new_message );
 
-        _service->messages[index] = message;
+        _service->messages[index] = new_message;
+        _service->messages_count[index] = 1;
 
-        ++_service->messages_count[index];
-
-        *_message = message;
+        *_message = new_message;
 
         return HB_SUCCESSFUL;
     }
@@ -302,16 +297,14 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
             {
                 break;
             }
-            else
-            {
-                --_service->messages_count[index];
 
-                ch_message_t * old_message = HB_RING_GET_PREV( base, messages );
+            --_service->messages_count[index];
 
-                HB_RING_REMOVE( base, old_message );
+            ch_message_t * old_message = HB_RING_GET_PREV( base, messages );
 
-                HB_FREE( old_message );
-            }
+            HB_RING_REMOVE( base, old_message );
+
+            HB_FREE( old_message );
         }
 
         ch_message_t * message = HB_RING_GET_PREV( base, messages );
@@ -332,21 +325,21 @@ static hb_result_t __ch_service_unmutex_get_message( ch_service_t * _service, hb
         return HB_SUCCESSFUL;
     }
 
-    ch_message_t * message = HB_NEWE( ch_message_t, capacity );
+    ch_message_t * new_message = HB_NEWE( ch_message_t, capacity );
 
-    if( message == HB_NULLPTR )
+    if( new_message == HB_NULLPTR )
     {
         return HB_FAILURE;
     }
 
-    message->capacity = capacity;
+    new_message->capacity = capacity;
 
-    HB_RING_PUSH_BACK( base, _service->messages[index], message );
-    _service->messages[index] = message;
+    HB_RING_PUSH_BACK( base, _service->messages[index], new_message );
+    _service->messages[index] = new_message;
 
     ++_service->messages_count[index];
 
-    *_message = message;
+    *_message = new_message;
 
     return HB_SUCCESSFUL;
 }
@@ -390,20 +383,19 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
 {
     if( _service->attributes == HB_NULLPTR )
     {
-        ch_attribute_t * attribute = HB_NEW( ch_attribute_t );
+        ch_attribute_t * new_attribute = HB_NEW( ch_attribute_t );
 
-        if( attribute == HB_NULLPTR )
+        if( new_attribute == HB_NULLPTR )
         {
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( base, attribute );
+        HB_RING_INIT( base, new_attribute );
 
-        _service->attributes = attribute;
+        _service->attributes = new_attribute;
+        _service->attributes_count = 1;
 
-        ++_service->attributes_count;
-
-        *_attribute = attribute;
+        *_attribute = new_attribute;
 
         return HB_SUCCESSFUL;
     }
@@ -416,16 +408,14 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
             {
                 break;
             }
-            else
-            {
-                --_service->attributes_count;
 
-                ch_attribute_t * old_attribute = HB_RING_GET_PREV( base, _service->attributes );
+            --_service->attributes_count;
 
-                HB_RING_REMOVE( base, old_attribute );
+            ch_attribute_t * old_attribute = HB_RING_GET_PREV( base, _service->attributes );
 
-                HB_FREE( old_attribute );
-            }
+            HB_RING_REMOVE( base, old_attribute );
+
+            HB_FREE( old_attribute );
         }
 
         ch_attribute_t * attribute = HB_RING_GET_PREV( base, _service->attributes );
@@ -446,19 +436,19 @@ static hb_result_t __ch_service_unmutex_get_attribute( ch_service_t * _service, 
         return HB_SUCCESSFUL;
     }
 
-    ch_attribute_t * attribute = HB_NEW( ch_attribute_t );
+    ch_attribute_t * new_attribute = HB_NEW( ch_attribute_t );
 
-    if( attribute == HB_NULLPTR )
+    if( new_attribute == HB_NULLPTR )
     {
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( base, _service->attributes, attribute );
-    _service->attributes = attribute;
+    HB_RING_PUSH_BACK( base, _service->attributes, new_attribute );
+    _service->attributes = new_attribute;
 
     ++_service->attributes_count;
 
-    *_attribute = attribute;
+    *_attribute = new_attribute;
 
     return HB_SUCCESSFUL;
 }
@@ -490,20 +480,20 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
 {
     if( _service->tags == HB_NULLPTR )
     {
-        ch_tag_t * tag = HB_NEW( ch_tag_t );
+        ch_tag_t * new_tag = HB_NEW( ch_tag_t );
 
-        if( tag == HB_NULLPTR )
+        if( new_tag == HB_NULLPTR )
         {
             return HB_FAILURE;
         }
 
-        HB_RING_INIT( base, tag );
+        HB_RING_INIT( base, new_tag );
 
-        _service->tags = tag;
+        _service->tags = new_tag;
 
         ++_service->tags_count;
 
-        *_tag = tag;
+        *_tag = new_tag;
 
         return HB_SUCCESSFUL;
     }
@@ -516,16 +506,14 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
             {
                 break;
             }
-            else
-            {
-                --_service->tags_count;
 
-                ch_tag_t * old_tag = HB_RING_GET_PREV( base, _service->tags );
+            --_service->tags_count;
 
-                HB_RING_REMOVE( base, old_tag );
+            ch_tag_t * old_tag = HB_RING_GET_PREV( base, _service->tags );
 
-                HB_FREE( old_tag );
-            }
+            HB_RING_REMOVE( base, old_tag );
+
+            HB_FREE( old_tag );
         }
 
         ch_tag_t * tag = HB_RING_GET_PREV( base, _service->tags );
@@ -546,19 +534,19 @@ static hb_result_t __ch_service_unmutex_get_tag( ch_service_t * _service, hb_tim
         return HB_SUCCESSFUL;
     }
 
-    ch_tag_t * tag = HB_NEW( ch_tag_t );
+    ch_tag_t * new_tag = HB_NEW( ch_tag_t );
 
-    if( tag == HB_NULLPTR )
+    if( new_tag == HB_NULLPTR )
     {
         return HB_FAILURE;
     }
 
-    HB_RING_PUSH_BACK( base, _service->tags, tag );
-    _service->tags = tag;
+    HB_RING_PUSH_BACK( base, _service->tags, new_tag );
+    _service->tags = new_tag;
 
     ++_service->tags_count;
 
-    *_tag = tag;
+    *_tag = new_tag;
 
     return HB_SUCCESSFUL;
 }
@@ -599,6 +587,11 @@ void ch_service_select_records( ch_service_t * _service, const char * _project, 
 
     HB_RING_FOREACH( base, ch_record_t, _service->records, record )
     {
+        if( record->created_timestamp == 0 )
+        {
+            continue;
+        }
+
         if( _timestamp - record->created_timestamp >= _service->timemax )
         {
             break;

@@ -10,13 +10,12 @@ import string
 import random
 import threading
 
-server = "https://hummingfab.com/api/grid"
+server = "http://localhost:5555"
+token = "cb57466281a8f398aa63416b8b499978"
+project = "NUM"
 
 class Testing(unittest.TestCase):
     def __test(self):
-        token = "2fc7ed896db131dac9416c2e8df33726"
-        project = "TM-DEV"
-    
         for i in range(500):
             rnd = random.randrange(0, 1696072383)
             data_insert = {}
