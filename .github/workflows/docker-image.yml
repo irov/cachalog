@@ -59,8 +59,6 @@ jobs:
         ssh staging -C "sudo docker run -d \\
         --name cachalot-dev \\
         --restart on-failure:3 \\
-        --cap-add=SYS_PTRACE \\
-        --opt o=size=600m \\
         --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} \\
         -v "/var/log/grid:/var/log/grid" \\
         -p 5555:5555 \\
