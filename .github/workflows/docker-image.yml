@@ -16,7 +16,7 @@ jobs:
       CACHALOT__TOKEN: ${{secrets.CACHALOT__TOKEN}}
 
     steps:
-    - name: Validate Requirements SECRETS
+    - name: Validate Requirements
       run: |
         if [[ -z "${{ env.CACHALOT__TOKEN }}" ]]; then
           echo "Secret CACHALOT__TOKEN is missing"
@@ -25,7 +25,7 @@ jobs:
 
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file ./docker/Dockerfile -t cachalot:dev
+      run: docker build . --file ./docker/Dockerfile -t cachalot:stage
 
     - name: Create key.pem
       run: |
@@ -37,26 +37,26 @@ jobs:
     - name: Create config
       run: |
         cat >> $HOME/.ssh/config <<END
-          Host staging
+          Host stage-server 
             HostName devdebugger.com
             User cicd-github
             IdentityFile $HOME/.ssh/key.pem
             StrictHostKeyChecking no
 
     - name: Export image
-      run: docker image save cachalot:dev | ssh staging -C "sudo docker load"
+      run: docker image save cachalot:stage | ssh stage-server -C "sudo docker load"
 
     - name: Stop container and save logs
-      run: ssh staging -C "sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log"
+      run: ssh stage-server -C 'sudo docker stop cachalot-dev && sudo logs cachalot-dev >& ~/logs/cachalot_${{github.sha}}.log'
       continue-on-error: true
 
     - name: Remove untagged image
-      run: ssh staging -C 'sudo docker rm cachalot-dev && sudo docker rmi $(sudo docker images --filter "dangling=true" -q --no-trunc)'
+      run: ssh stage-server -C 'sudo docker rm cachalot-dev && sudo docker rmi $(sudo docker images --filter "dangling=true" -q --no-trunc)'
       continue-on-error: true
       
     - name: RUN DOCKER
       run: |
-        ssh staging -C "sudo docker run -d \\
+        ssh stage-server -C "sudo docker run -d \\
         --name cachalot-dev \\
         --restart on-failure:3 \\
         --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} \\

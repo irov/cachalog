@@ -4,5 +4,5 @@ Run tests:
 
 ```shell
 pytest
-python test_crash.py
+python test.py
 ```

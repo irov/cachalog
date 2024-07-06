@@ -1,5 +1,6 @@
 import cachalot
 
+import os
 import sys
 import unittest
 import json
@@ -10,9 +11,9 @@ import string
 import random
 import threading
 
-server = "http://localhost:5555"
-token = "cb57466281a8f398aa63416b8b499978"
-project = "NUM"
+server = os.getenv("SERVER_URL", "http://localhost:5555") 
+token = os.getenv("TOKEN", "cb57466281a8f398aa63416b8b499978")
+project = os.getenv("PROJECT_NAME", "NUM")
 
 class Testing(unittest.TestCase):
     def __test(self):
