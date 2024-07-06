@@ -62,4 +62,4 @@ jobs:
         --env CACHALOT__TOKEN=${{secrets.CACHALOT__TOKEN}} \\
         -v "/var/log/grid:/var/log/grid" \\
         -p 5555:5555 \\
-        cachalot:dev"
+        cachalot:stage"
